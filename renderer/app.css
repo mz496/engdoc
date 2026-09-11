@@ -1,0 +1,41 @@
+/* Additions for the document layer. Everything a figure needs is in lib.css. */
+.head-main { margin-top: 4px; }
+.head-main > ul.pts { margin-top: 0; }
+.doc-errors { margin: 0 0 24px; padding: 10px 14px; border: 1px solid var(--crash); border-radius: 8px; color: var(--crash); font-family: var(--mono); font-size: 12px; }
+.doc-error { padding: 10px 14px; border: 1px dashed var(--crash); border-radius: 8px; color: var(--crash); font-family: var(--mono); font-size: 12px; }
+.section.cols-1 > .blk { border-top: 0; padding-top: 0; max-width: 78ch; }
+main > .section:first-of-type { margin-top: 40px; }
+pre code { font-family: var(--mono); font-size: 12px; }
+main > pre, .rail pre, .blk pre { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; overflow-x: auto; }
+/* Header meta line from frontmatter, and the directory. */
+header > h1 { margin-bottom: 6px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0 0 18px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.03em; color: var(--ink-soft); }
+.meta-chip { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; }
+.meta-chip.type { color: var(--ink); }
+.meta-chip.status { color: var(--warn); border-color: var(--warn); }
+.meta-chip.status-done, .meta-chip.status-shipped, .meta-chip.status-implemented { color: var(--fix); border-color: var(--fix); }
+.meta-chip.tag { color: var(--ink-faint); }
+.meta-chip.date { border-style: dashed; color: var(--ink-faint); }
+.meta-chip.bad { color: var(--crash); border-color: var(--crash); }
+.meta-link { align-self: center; }
+.dir { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--line); max-width: 1100px; }
+.dir-row { display: grid; grid-template-columns: minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(120px, 1fr) max-content; gap: 8px 18px; align-items: baseline; padding: 11px 4px; border-bottom: 1px solid var(--line); }
+.dir-title { font-size: 15px; text-decoration: none; color: var(--ink); }
+.dir-title:hover { text-decoration: underline; text-decoration-color: var(--link); }
+.dir-path { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); overflow-wrap: anywhere; }
+.dir-chips { display: flex; flex-wrap: wrap; gap: 4px 6px; font-family: var(--mono); font-size: 10.5px; }
+.dir-time { font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); white-space: nowrap; }
+@media (max-width: 720px) { .dir-row { grid-template-columns: 1fr max-content; } .dir-path, .dir-chips { grid-column: 1 / -1; } }
+
+/* The frontmatter box: the last tenth of the header, top right. */
+header.doc-head { display: grid; grid-template-columns: minmax(0, 1fr) clamp(150px, 11%, 230px); gap: 0 36px; align-items: start; }
+header.doc-head > .head-main { min-width: 0; }
+header.doc-head > .head-main > h1 { margin-bottom: 14px; }
+.fm { margin-top: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-family: var(--mono); font-size: 11px; line-height: 1.5; }
+.fm dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; margin: 0; }
+.fm dt { color: var(--ink-faint); letter-spacing: 0.06em; text-transform: uppercase; font-size: 9.5px; padding-top: 2px; }
+.fm dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.fm dd.status { color: var(--warn); }
+.fm dd.status-done, .fm dd.status-shipped, .fm dd.status-implemented { color: var(--fix); }
+.fm dd.bad { color: var(--crash); }
+@media (max-width: 820px) { header.doc-head { grid-template-columns: 1fr; } .fm { max-width: 320px; } }

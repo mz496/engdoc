@@ -1,0 +1,548 @@
+  :root {
+    --bg: #f7f7f9;
+    --surface: #ffffff;
+    --surface2: #eef0f4;
+    --ink: #23262d;
+    --ink-soft: #5c6270;
+    --ink-faint: #9aa2b0;
+    --line: #d9dce3;
+    --act: #1f6fc4;        /* activation bars, live-index accent */
+    --act-soft: #e3eefb;
+    --crash: #c8443a;      /* failed messages */
+    --crash-soft: #fbe7e5;
+    --fix: #1e8a60;        /* added by a diff */
+    --fix-soft: #e0f3ea;
+    --warn: #a8730b;       /* changed by a diff */
+    --warn-soft: #fbeecd;
+    --lit: #101318;        /* hover highlight, the brightest neutral the theme has */
+    --lit-soft: #dde1e9;
+    --link: #1a76ac;       /* links: a sky blue, lighter than --act so a link never reads as a highlight */
+    --syn-kw: #6d28d9;     /* code tour syntax: keywords, tags */
+    --syn-str: #0f766e;    /* strings, numbers */
+    --syn-fn: #9a3412;     /* names: functions, classes, attributes */
+    --note-bg: #fbf3d7;    /* sticky-note annotations */
+    --note-edge: #dccb92;
+    --note-ink: #6b5d2e;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --tier-3: 20px;
+    --tier-2: calc(var(--tier-3) * 1.5);
+    --tier-1: calc(var(--tier-2) * 1.5);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171c; --surface: #1d2027; --surface2: #242833; --ink: #e7e9ef; --ink-soft: #9aa1b2;
+      --ink-faint: #666e80; --line: #333845; --act: #5aa7f0; --act-soft: #1c2c40;
+      --crash: #ef6157; --crash-soft: #3c211f; --fix: #46bd8b; --fix-soft: #1b3229;
+      --note-bg: #332c17; --note-edge: #6b5d2e; --note-ink: #d9c887;
+      --warn: #e0a93a; --warn-soft: #3a2f14;
+      --lit: #ffffff; --lit-soft: #39414f;
+      --syn-kw: #c4b5fd; --syn-str: #5eead4; --syn-fn: #fdba74;
+      --link: #8fd0ff;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171c; --surface: #1d2027; --surface2: #242833; --ink: #e7e9ef; --ink-soft: #9aa1b2;
+    --ink-faint: #666e80; --line: #333845; --act: #5aa7f0; --act-soft: #1c2c40;
+    --crash: #ef6157; --crash-soft: #3c211f; --fix: #46bd8b; --fix-soft: #1b3229;
+    --note-bg: #332c17; --note-edge: #6b5d2e; --note-ink: #d9c887;
+    --warn: #e0a93a; --warn-soft: #3a2f14;
+    --lit: #ffffff; --lit-soft: #39414f;
+    --syn-kw: #c4b5fd; --syn-str: #5eead4; --syn-fn: #fdba74;
+    --link: #8fd0ff;
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f7f9; --surface: #ffffff; --surface2: #eef0f4; --ink: #23262d; --ink-soft: #5c6270;
+    --ink-faint: #9aa2b0; --line: #d9dce3; --act: #1f6fc4; --act-soft: #e3eefb;
+    --crash: #c8443a; --crash-soft: #fbe7e5; --fix: #1e8a60; --fix-soft: #e0f3ea;
+    --warn: #a8730b; --warn-soft: #fbeecd;
+    --lit: #101318; --lit-soft: #dde1e9;
+    --syn-kw: #6d28d9; --syn-str: #0f766e; --syn-fn: #9a3412;
+    --link: #1a76ac;
+    --note-bg: #fbf3d7; --note-edge: #dccb92; --note-ink: #6b5d2e;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); line-height: 1.55; margin: 0; }
+  main { box-sizing: border-box; max-width: 1580px; margin: 0 auto; padding: 48px 28px 96px; }
+
+  .section { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 20px 56px; align-items: start; margin-top: 72px; }
+  .section > h3, .full { grid-column: 1 / -1; margin: 0; max-width: 78ch; }
+
+  /* Column sections. Rail and figure is one shape of body section, this is the other: two or three
+     peers side by side, or one when a section has something to say and nothing to show. */
+  /* A figure that needs the whole measure. The rail stacks above it and keeps a reading width of
+     its own, because a rail stretched to the width of a wide diagram stops being a column of
+     argument and becomes a line too long to track back. */
+  .section.wide { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .section.wide > .rail { max-width: 78ch; }
+  .section.cols-1 { grid-template-columns: minmax(0, 1fr); }
+  .section.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .section.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px 40px; }
+  /* Blocks are peers, so a hairline says read across. A card would say read one and move on, which
+     is the opposite of what a column section is for. */
+  .blk { border-top: 1px solid var(--line); padding-top: 12px; min-width: 0; }
+  /* A lone block has no peers, so the rule that says "read across" has nothing to say, and a single
+     column at full page width is not prose, it is a line too long to track back. */
+  .section.cols-1 > .blk { border-top: 0; padding-top: 0; max-width: 78ch; }
+  .section.cols-1 > .blk p, .section.cols-1 > .blk ul.pts { font-size: 14.5px; }
+  .section.cols-1 > .blk ul.pts { gap: 7px; }
+  .blk h4 { margin: 0 0 9px; padding-top: 0; border-top: 0; }
+  .blk p { margin: 0 0 9px; font-size: 14px; }
+  .blk p:last-child { margin-bottom: 0; }
+  .blk ul.pts { margin: 0; font-size: 13.5px; gap: 6px; }
+  .blk .sub { margin: 0 0 9px; max-width: none; }
+  .figure { min-width: 0; }
+  @media (max-width: 1200px) { .section.cols-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 960px) {
+    .section { grid-template-columns: 1fr; gap: 8px; }
+    .section.cols-2, .section.cols-3 { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  }
+
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 8px; }
+  /* Text scale. Each tier is 1.5x the one below it. A heading at any tier can be a title
+     or a full-sentence idea, so the tier says how much of the document it covers and
+     nothing else. The .lv-* aliases render a specimen without putting a stray heading
+     into the document outline. */
+  h1, .lv-1 { font-family: var(--mono); font-size: clamp(26px, 4.4vw, var(--tier-1)); line-height: 1.1; margin: 6px 0 12px; text-wrap: balance; letter-spacing: -0.025em; font-weight: 800; }
+  h2, .lv-2 { font-family: var(--mono); font-size: var(--tier-2); margin: 0 0 8px; text-wrap: balance; line-height: 1.2; letter-spacing: -0.015em; font-weight: 700; }
+  h3, .lv-3 { font-family: var(--mono); font-size: var(--tier-3); margin: 4px 0 14px; text-wrap: balance; line-height: 1.35; letter-spacing: 0; font-weight: 650; }
+  h4, .notes-h, .lv-4 { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-soft); font-weight: 650; margin: 22px 0 9px; }
+  p { margin: 0 0 13px; font-size: 14.5px; }
+  /* The whole text layer is two classes. They are written first and read second: picking one
+     forces the question "claim, or reason to believe it?" before the sentence exists, and the
+     brightness a human sees is only that decision showing through. Weight is never the signal. */
+  .idea { color: var(--ink); }
+  .support { color: var(--ink-soft); }
+  /* The one colour in the prose layer. Sky rather than the activation blue, and always underlined, so a
+     link is never mistaken for an activation bar or for what a walkthrough is lighting. */
+  a { color: var(--link); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px;
+    text-decoration-color: color-mix(in srgb, var(--link) 45%, transparent); }
+  a:hover { text-decoration-color: var(--link); }
+  a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; border-radius: 2px; }
+  p.idea { font-size: 15.5px; max-width: 74ch; }
+  p.support { font-size: 14.5px; margin: -8px 0 14px; line-height: 1.45; text-wrap: balance; max-width: 60ch; }
+  code { font-family: var(--mono); font-size: 0.88em; background: var(--surface2); border-radius: 4px; padding: 1px 5px; }
+  .soft { color: var(--ink-soft); }
+
+  ul.pts { margin: 0 0 16px; padding-left: 17px; display: grid; gap: 7px; font-size: 14.5px; }
+  ul.pts li { padding-left: 2px; }
+  ul.pts li::marker { color: var(--ink-soft); }
+  ul.pts ul { margin: 5px 0 0; padding-left: 2px; display: grid; gap: 4px; font-size: 13.5px; color: var(--ink-soft); list-style: none; }
+  ul.pts ul li { position: relative; padding-left: 15px; }
+  ul.pts ul li::before { content: "\2013"; position: absolute; left: 0; color: var(--line); }
+
+  /* Two equal columns under a full-width title. The right column used to be capped at 340px, which
+     left the left one running long and the right one cramped into a gutter. */
+  .head-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px 56px; align-items: start; margin-top: 18px; }
+  .head-side { display: grid; gap: 20px; align-content: start; }
+  .side-h { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.13em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 -10px; }
+  .head-side .idx { flex-direction: column; align-items: stretch; gap: 6px; margin: 0; }
+  .head-side .idx .it { justify-content: flex-start; padding: 8px 14px; border-radius: 8px; }
+  .head-side .idx .it .n { min-width: 15px; }
+  .head-side .keyline { flex-direction: column; align-items: stretch; gap: 6px; margin: 0; font-size: 12px; }
+  .head-side .keyline .chip { justify-content: flex-start; border-radius: 8px; padding: 6px 12px; }
+  @media (max-width: 960px) { .head-grid { grid-template-columns: 1fr; gap: 20px; } }
+
+  /* component index */
+  .idx { display: flex; gap: 8px; flex-wrap: wrap; margin: 22px 0 0; }
+  .idx .it { display: inline-flex; align-items: baseline; gap: 8px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-family: inherit; color: inherit; line-height: inherit; cursor: pointer; transition: border-color 120ms, background 120ms; }
+  .idx .it .n { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
+  .idx .it .soon { font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  .idx .it[aria-selected="true"] { border-color: var(--act); background: var(--act-soft); font-weight: 700; }
+  .idx .it[aria-selected="true"] .n { color: var(--act); }
+  .idx .it[aria-selected="false"]:not([disabled]):hover { border-color: var(--ink-soft); }
+  .idx .it[disabled] { opacity: 0.5; cursor: default; }
+  .idx .it:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+  .pane[hidden] { display: none; }
+  .pane > .section:first-child { margin-top: 44px; }
+  .vh { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  ol.shows { margin: 0 0 4px; padding-left: 21px; display: grid; gap: 6px; font-size: 14.5px; }
+  ol.shows li { padding-left: 3px; }
+  ol.shows li::marker { font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--ink-soft); }
+  .notes-h { padding-top: 13px; border-top: 1px solid var(--line); }
+  .notes-h + ul.pts { font-size: 13px; color: var(--ink-soft); gap: 6px; }
+  .notes-h + ul.pts .support { color: inherit; }
+
+  /* walkthrough */
+  .wt { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 14px 14px 12px; }
+  .wt:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+  .wt-stage { overflow-x: auto; }
+  .wt-stage [data-k] { transition: opacity 180ms ease; }
+  .wt-stage .wt-future { opacity: 0.1; }
+  .wt-stage .wt-past { opacity: 0.42; }
+  .wt-stage .wt-now { opacity: 1; }
+  .wt-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .wt-bar button { width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; line-height: 1; }
+  .wt-bar button:hover { border-color: var(--act); color: var(--act); }
+  .wt-bar button:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+  .wt-range { flex: 1; accent-color: var(--act); cursor: grab; }
+  .wt-range:active { cursor: grabbing; }
+  .wt-count { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); min-width: 46px; text-align: right; }
+  .wt-note { margin: 10px 2px 0; font-size: 13.5px; color: var(--ink-soft); min-height: 40px; }
+  .wt-panel { overflow-x: auto; }
+
+  /* frozen key columns beside a scrolling remainder */
+  .tbl-split { display: flex; align-items: flex-start; }
+  .tbl-pin { flex: 0 0 auto; }
+  .tbl-run { flex: 1 1 auto; min-width: 0; overflow-x: auto; }
+
+  /* json cell tooltip */
+  .tbl-tip { display: none; position: fixed; z-index: 60; margin: 0; max-width: 380px; max-height: 42vh; overflow: auto;
+    padding: 10px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.2); font-family: var(--mono); font-size: 11px; line-height: 1.5;
+    color: var(--ink); white-space: pre; pointer-events: none; opacity: 0.5; }
+  [data-json] { cursor: help; }
+  [data-json]:focus-visible, [data-doc]:focus-visible { outline: 2px solid var(--act); outline-offset: 1px; }
+  /* Same panel, different content. A docstring is a sentence, so it wraps and sets in the body face
+     instead of holding the monospace column shape a json value needs. */
+  .tbl-tip.doc { font-family: var(--sans); font-size: 12.5px; line-height: 1.5; white-space: normal;
+    max-width: 330px; color: var(--ink); }
+  .wt-panel + .wt-panel { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); }
+  .wt-panel-label { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 8px; }
+
+  /* call graph */
+  .cv { touch-action: none; }
+  .cg text { font-family: var(--mono); }
+  .cg-plate { fill: var(--surface); stroke: var(--ink); stroke-width: 1.5; }
+  .cg-rule { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+  .cg-split { fill: none; stroke: var(--line); stroke-width: 1; }
+  .cg-file { font-size: 11.5px; font-weight: 700; fill: var(--ink); }
+  .cv-box { cursor: grab; }
+  .cv-box.dragging { cursor: grabbing; }
+  .cg-band { fill: transparent; pointer-events: all; }
+  .cg-fn { transition: opacity 150ms ease; }
+  .cg-fn text { font-size: 11px; fill: var(--ink); }
+  /* Private is a permanent fact about the function, not a colour it can lose. Fading the fill
+     rather than recolouring it means the tint a diff or a highlight puts on top still comes through
+     faded, instead of the row snapping back to full strength the moment it is marked. */
+  .cg-fn.priv text, .cg-fn.priv .cg-sign, .cg-fn.priv .cg-meta rect { fill-opacity: 0.34; }
+  /* Arrows ride over the boxes rather than routing around them: a graph with real fan-in cannot be
+     drawn without crossings, so the lines are faint enough to read text through instead. */
+  .cg-edges { pointer-events: none; }
+  .cg-edge { opacity: 0.26; transition: opacity 150ms ease; }
+  .cg-line { fill: none; stroke: var(--ink); stroke-width: 1.4; }
+  .cg-head, .cg-tail { fill: var(--ink); }
+  /* Hover highlights in the brightest neutral the theme has, never in blue. Blue is the
+     walkthrough's, and a reader who sees both on one page has to be able to tell which system is
+     talking. In dark that neutral is literally white; in light, white on white says nothing, so it
+     is the near-black at the other end of the same axis. */
+  .cg.lit .cg-edge { opacity: 0.06; }
+  .cg.lit .cg-edge.on { opacity: 1; }
+  .cg.lit .cg-edge.on .cg-line { stroke: var(--lit); stroke-width: 1.8; }
+  .cg.lit .cg-edge.on .cg-head, .cg.lit .cg-edge.on .cg-tail { fill: var(--lit); }
+  .cg.lit .cg-fn { opacity: 0.34; }
+  .cg.lit .cg-fn.on { opacity: 1; }
+  .cg.lit .cg-fn.on .cg-band { fill: var(--lit-soft); }
+  .cg.lit .cg-fn.on text { fill: var(--lit); }
+  .cg.lit .cg-fn.seed .cg-band { fill: var(--lit-soft); stroke: var(--lit); stroke-width: 1.2; }
+
+  /* walkthrough annotations on a call graph: in, out, side effects */
+  .cg-anno { pointer-events: none; }
+  .cg-anno-box { fill: var(--note-bg); stroke: var(--note-edge); stroke-width: 1; }
+  .cg .cg-anno-lbl { font-family: var(--mono); font-size: 8.5px; font-weight: 700; letter-spacing: 0.08em; fill: var(--note-ink); }
+  .cg .cg-anno-txt { font-family: var(--sans); font-size: 11px; fill: var(--note-ink); }
+  .cg-anno-lead { fill: none; stroke: var(--note-edge); stroke-width: 1.2; }
+  .cg-anno-head { fill: var(--note-edge); }
+  .cg-anno-pin { fill: var(--note-edge); }
+  .cg-anno-glyph { fill: var(--note-bg); stroke: var(--note-ink); stroke-width: 1.3; }
+  .cg .cg-anno-fx { font-family: var(--sans); font-size: 10px; font-style: italic; fill: var(--note-ink); }
+
+  /* collapse control and the veil it raises */
+  .cv-eye { cursor: pointer; }
+  .cv-eyehit { fill: transparent; pointer-events: all; }
+  .cv-eyeball { fill: none; stroke: var(--ink-faint); stroke-width: 1.3; }
+  .cv-pupil { fill: var(--ink-faint); }
+  .cv-eyeslash { display: none; stroke: var(--ink-soft); stroke-width: 1.4; stroke-linecap: round; }
+  .cv-eye:hover .cv-eyeball { stroke: var(--ink); }
+  .cv-eye:hover .cv-pupil { fill: var(--ink); }
+  .cv-eye:focus-visible { outline: 2px solid var(--act); outline-offset: 1px; }
+  .cv-box.hidden .cv-eyeslash { display: block; }
+  .cv-box.hidden .cv-pupil { display: none; }
+  .cv-veil { display: none; }
+  .cv-box.hidden .cv-veil { display: block; }
+  /* Dashed like a fog node, because that is what a collapsed box is: a part of the graph the reader
+     has chosen to stop looking at. Semi opaque rather than solid so the shape underneath still
+     registers as a file with rows in it. */
+  .cv-veilplate { fill: var(--surface); fill-opacity: 0.94; stroke: var(--ink-faint); stroke-width: 1.3; stroke-dasharray: 4 4; }
+  .cv-veiltext { font-family: var(--mono); font-weight: 700; fill: var(--ink-soft); }
+
+  .cg-barbg { fill: var(--line); }
+  .cg-barfill { fill: var(--ink-faint); }
+  .cg-sq-add { fill: var(--fix); }
+  .cg-sq-del { fill: var(--crash); }
+  .cg-sq-off { fill: var(--line); }
+  .cg-headhit, .erd-colhit, .erd-headhit { fill: transparent; pointer-events: all; }
+  /* Hovering a row in an ERD lights the relationships that leave or land on it and mutes the rest,
+     which is how a tangle of ten edges gets read one at a time. Neutral white, like a call graph:
+     blue stays the walkthrough's. */
+  .erd-band { fill: transparent; }
+  .erd-col.on .erd-band { fill: var(--lit-soft); }
+  .erd-lit .cv-edge:not(.on) { opacity: 0.12; }
+  .erd-lit .cv-edge.faded { opacity: 0.07; }
+  .erd-lit .cv-edge.on path, .erd-lit .cv-edge.on line, .erd-lit .cv-edge.on circle { stroke: var(--lit); }
+  .erd-lit .cv-edge.on path { stroke-width: 1.8; }
+  /* ERD diff. The same three tints and three signs as a call graph: a table or a row that was added,
+     removed or changed, and a relationship likewise. A marked edge keeps its colour when lit, since
+     the change is the thing under review. Scoped to .erd-edges so the rules never reach a call
+     graph's arrowheads, which are filled paths with no stroke of their own. */
+  .cv-box.add .erd-plate, .cv-box.add .erd-rule { stroke: var(--fix); }
+  .cv-box.mod .erd-plate, .cv-box.mod .erd-rule { stroke: var(--warn); }
+  .cv-box.del .erd-plate, .cv-box.del .erd-rule { stroke: var(--crash); }
+  .cv-box.del .erd-plate { stroke-dasharray: 5 4; }
+  .erd-sign { font-size: 11px; font-weight: 700; }
+  .cv-box.add .erd-title, .cv-box.add > .erd-head .erd-sign, .erd-col.add .erd-name, .erd-col.add .erd-sign { fill: var(--fix); }
+  .cv-box.mod .erd-title, .cv-box.mod > .erd-head .erd-sign, .erd-col.mod .erd-name, .erd-col.mod .erd-sign { fill: var(--warn); }
+  .cv-box.del .erd-title, .cv-box.del > .erd-head .erd-sign, .erd-col.del .erd-name, .erd-col.del .erd-sign { fill: var(--crash); }
+  .erd-col.add .erd-band, .erd-col.on.add .erd-band { fill: var(--fix-soft); }
+  .erd-col.mod .erd-band, .erd-col.on.mod .erd-band { fill: var(--warn-soft); }
+  .erd-col.del .erd-band, .erd-col.on.del .erd-band { fill: var(--crash-soft); }
+  .erd-edges .cv-edge.add path, .erd-edges .cv-edge.add line, .erd-edges .cv-edge.add circle,
+  .erd-lit .erd-edges .cv-edge.on.add path, .erd-lit .erd-edges .cv-edge.on.add line, .erd-lit .erd-edges .cv-edge.on.add circle { stroke: var(--fix); }
+  .erd-edges .cv-edge.mod path, .erd-edges .cv-edge.mod line, .erd-edges .cv-edge.mod circle,
+  .erd-lit .erd-edges .cv-edge.on.mod path, .erd-lit .erd-edges .cv-edge.on.mod line, .erd-lit .erd-edges .cv-edge.on.mod circle { stroke: var(--warn); }
+  .erd-edges .cv-edge.del path, .erd-edges .cv-edge.del line, .erd-edges .cv-edge.del circle,
+  .erd-lit .erd-edges .cv-edge.on.del path, .erd-lit .erd-edges .cv-edge.on.del line, .erd-lit .erd-edges .cv-edge.on.del circle { stroke: var(--crash); }
+  .erd-edges .cv-edge.add .erd-line { stroke-width: 1.7; }
+  .erd-edges .cv-edge.mod .erd-line { stroke-width: 1.7; stroke-dasharray: 2 3; }
+  .erd-edges .cv-edge.del .erd-line { stroke-width: 1.7; stroke-dasharray: 5 4; }
+  /* The underline that marks a docstring or a column comment is the colour of the text above it, in
+     every state: ink, a diff tint, white when lit, and as faint as a private row. A muted underline
+     under a bright name read as a different mark. */
+  .cg-docline, .erd-docline { fill: none; stroke: var(--ink); stroke-width: 1; stroke-dasharray: 1.5 2.5; }
+  .cg-fn.priv .cg-docline { stroke-opacity: 0.34; }
+  .cg-fn.add .cg-docline, .erd-col.add .erd-docline { stroke: var(--fix); }
+  .cg-fn.mod .cg-docline, .erd-col.mod .erd-docline { stroke: var(--warn); }
+  .cg-fn.del .cg-docline, .erd-col.del .erd-docline { stroke: var(--crash); }
+  .cg.lit .cg-fn.on .cg-docline { stroke: var(--lit); }
+  .cg.lit .cg-fn.on.add .cg-docline { stroke: var(--fix); }
+  .cg.lit .cg-fn.on.mod .cg-docline { stroke: var(--warn); }
+  .cg.lit .cg-fn.on.del .cg-docline { stroke: var(--crash); }
+  .cg-fogplate { fill: none; stroke: var(--ink-faint); stroke-width: 1.3; stroke-dasharray: 4 4; }
+  .cg-fogtext { font-family: var(--sans); font-size: 11.5px; fill: var(--ink-faint); font-style: italic; }
+  .cg-fog { transition: opacity 150ms ease; }
+  .cg.lit .cg-fog { opacity: 0.34; }
+  .cg.lit .cg-fog.on { opacity: 1; }
+
+  /* diff state: green added, amber changed, red removed */
+  .cg-fn.add text { fill: var(--fix); }
+  .cg-fn.mod text { fill: var(--warn); }
+  .cg-fn.del text { fill: var(--crash); }
+  .cg-fn.add .cg-band { fill: var(--fix-soft); }
+  .cg-fn.mod .cg-band { fill: var(--warn-soft); }
+  .cg-fn.del .cg-band { fill: var(--crash-soft); }
+  .cg-sign { font-size: 11px; font-weight: 700; }
+  .cg-fn.add .cg-sign { fill: var(--fix); }
+  .cg-fn.mod .cg-sign { fill: var(--warn); }
+  .cg-fn.del .cg-sign { fill: var(--crash); }
+  /* A changed call still connects the same two functions, so it keeps its line and changes its
+     texture. Three dash patterns mean the three states survive a greyscale print. */
+  .cg-edge.add, .cg-edge.mod, .cg-edge.del { opacity: 0.8; }
+  .cg-edge.add .cg-line { stroke: var(--fix); stroke-width: 1.7; }
+  .cg-edge.mod .cg-line { stroke: var(--warn); stroke-width: 1.7; stroke-dasharray: 2 3; }
+  .cg-edge.del .cg-line { stroke: var(--crash); stroke-width: 1.7; stroke-dasharray: 5 4; }
+  .cg-edge.add .cg-head, .cg-edge.add .cg-tail { fill: var(--fix); }
+  .cg-edge.mod .cg-head, .cg-edge.mod .cg-tail { fill: var(--warn); }
+  .cg-edge.del .cg-head, .cg-edge.del .cg-tail { fill: var(--crash); }
+
+  /* Lighting a marked row keeps its diff colour: what a reader is tracing does not stop being an
+     addition because they pointed at it. */
+  .cg.lit .cg-fn.on.add .cg-band { fill: var(--fix-soft); }
+  .cg.lit .cg-fn.on.add text { fill: var(--fix); }
+  .cg.lit .cg-fn.on.mod .cg-band { fill: var(--warn-soft); }
+  .cg.lit .cg-fn.on.mod text { fill: var(--warn); }
+  .cg.lit .cg-fn.on.del .cg-band { fill: var(--crash-soft); }
+  .cg.lit .cg-fn.on.del text { fill: var(--crash); }
+  .cg.lit .cg-fn.seed.add .cg-band { stroke: var(--fix); }
+  .cg.lit .cg-fn.seed.mod .cg-band { stroke: var(--warn); }
+  .cg.lit .cg-fn.seed.del .cg-band { stroke: var(--crash); }
+  .cg.lit .cg-edge.on.add .cg-line { stroke: var(--fix); }
+  .cg.lit .cg-edge.on.mod .cg-line { stroke: var(--warn); }
+  .cg.lit .cg-edge.on.del .cg-line { stroke: var(--crash); }
+  .cg.lit .cg-edge.on.add .cg-head, .cg.lit .cg-edge.on.add .cg-tail { fill: var(--fix); }
+  .cg.lit .cg-edge.on.mod .cg-head, .cg.lit .cg-edge.on.mod .cg-tail { fill: var(--warn); }
+  .cg.lit .cg-edge.on.del .cg-head, .cg.lit .cg-edge.on.del .cg-tail { fill: var(--crash); }
+
+  /* An edge touching a collapsed box, on any canvas. Placed last and written to out-specify the diff
+     opacities and both highlight states, so folding a box away quiets its arrows whatever else is on. */
+  .cv-edge.faded, .lit .cv-edge.faded.on { opacity: 0.07; }
+  @media (prefers-reduced-motion: reduce) { .cg-fn, .cg-edge { transition: none; } }
+
+  /* A call graph inside a walkthrough: the wrapper's opacity classes already out-specify the
+     component's own, and these give the focused call and row the activation tint as well. */
+  .wt-stage .cg-edge.wt-now:not(.add):not(.mod):not(.del) .cg-line { stroke: var(--act); stroke-width: 1.8; }
+  .wt-stage .cg-edge.wt-now:not(.add):not(.mod):not(.del) .cg-head,
+  .wt-stage .cg-edge.wt-now:not(.add):not(.mod):not(.del) .cg-tail { fill: var(--act); }
+  .wt-stage .cg-fn.wt-now:not(.add):not(.mod):not(.del) .cg-band { fill: var(--act-soft); }
+  .wt-stage .cg-fn.wt-now:not(.add):not(.mod):not(.del) text { fill: var(--act); }
+
+  /* figure cards */
+  .figcard { position: relative; margin: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 14px 14px 10px; }
+
+  /* expand control, and the stage it opens */
+  .cv-full { position: absolute; top: 8px; right: 8px; z-index: 2; padding: 3px 10px; font-family: var(--mono);
+    font-size: 10px; letter-spacing: 0.06em; color: var(--ink-soft); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+  .cv-full:hover { color: var(--act); border-color: var(--act); }
+  .cv-full:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+  .cv-stage { display: none; position: fixed; inset: 0; z-index: 50; background: var(--bg); flex-direction: column; }
+  .cv-stage.on { display: flex; }
+  .cv-stage-bar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: var(--surface);
+    border-bottom: 1px solid var(--line); }
+  .cv-stage-name { font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; color: var(--ink-faint); }
+  .cv-stage-sp { flex: 1; }
+  .cv-stage-bar button { font-family: var(--mono); font-size: 11px; padding: 4px 11px; color: var(--ink);
+    background: var(--surface); border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+  .cv-stage-bar button:hover { color: var(--act); border-color: var(--act); }
+  .cv-stage-bar button:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+  .cv-zlevel { font-family: var(--mono); font-size: 11px; color: var(--ink-soft); min-width: 46px;
+    text-align: center; font-variant-numeric: tabular-nums; }
+  .cv-stage-pane { flex: 1; overflow: auto; cursor: grab; overscroll-behavior: contain; }
+  .cv-stage-canvas { display: inline-block; vertical-align: top; }
+  .cv-stage-pane.panning { cursor: grabbing; }
+  .cv-stage-hint { font-family: var(--mono); font-size: 10px; letter-spacing: 0.05em; color: var(--ink-faint); }
+  .figcard + .figcard { margin-top: 26px; }
+  .scroll { overflow-x: auto; }
+  .seq text { font-family: var(--mono); }
+  .seq text.sans { font-family: var(--sans); }
+
+  /* spec viewer */
+  details.specview { margin-top: 10px; }
+  details.specview summary { cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: 0.05em; color: var(--act); list-style: none; }
+  details.specview summary::-webkit-details-marker { display: none; }
+  details.specview summary::before { content: "\25B8 "; }
+  details.specview[open] summary::before { content: "\25BE "; }
+  details.specview summary:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+  details.specview pre { margin: 8px 0 0; padding: 12px 14px; background: var(--surface2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; font-family: var(--mono); font-size: 11px; line-height: 1.55; overflow: auto; max-height: 320px; }
+
+  details.specview .speccopy { float: right; margin: -1px 0 0; padding: 2px 9px; font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.05em; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line);
+    border-radius: 5px; cursor: pointer; }
+  details.specview .speccopy:hover { color: var(--act); border-color: var(--act); }
+  details.specview .speccopy:focus-visible { outline: 2px solid var(--act); outline-offset: 2px; }
+
+  /* drafting-sheet title block */
+  /* Figure slug. A stable handle for citing a figure from prose, because a number is a position
+     and inserting one figure silently renumbers every reference after it. */
+  .tblock { display: flex; justify-content: flex-end; border-top: 1px solid var(--line); margin-top: 12px; padding-top: 5px; }
+  .tblock > div.nm { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--ink-faint); white-space: nowrap; }
+
+  /* spec reference card */
+  .ref { border: 1px solid var(--line); border-radius: 10px; background: var(--surface); overflow: hidden; }
+  .ref-head { padding: 11px 16px; font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; background: var(--surface2); border-bottom: 1px solid var(--line); color: var(--ink-soft); text-transform: uppercase; }
+  .ref dl { display: grid; grid-template-columns: max-content 1fr; gap: 9px 20px; margin: 0; padding: 14px 16px; }
+  .ref dt { font-family: var(--mono); font-size: 13px; font-weight: 700; }
+  .ref dd { margin: 0; font-family: var(--mono); font-size: 12px; line-height: 1.6; color: var(--ink-soft); overflow-wrap: anywhere; }
+  /* Points inside a reference cell. Same en-dash marker as a nested ul.pts list, so a card that
+     carries several facts per row still reads as the same family of list. */
+  .ref dd ul { margin: 5px 0 0; padding: 0; display: grid; gap: 3px; list-style: none; }
+  .ref dd li { position: relative; padding-left: 12px; }
+  .ref dd li::before { content: "\2013"; position: absolute; left: 0; color: var(--line); }
+  .ref .ft { border-top: 1px dashed var(--line); padding: 11px 16px 13px; font-size: 13px; color: var(--ink-soft); }
+  @media (max-width: 560px) { .ref dl { grid-template-columns: 1fr; gap: 2px; } .ref dd { margin-bottom: 9px; } }
+
+  .keyline { display: flex; gap: 10px; align-items: center; font-family: var(--mono); font-size: 13px; margin: 18px 0 0; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  /* Table of contents. Collapsed it is one dash per heading, indented by level, so the shape of
+     the document reads without any words; hovering swaps the dashes for the titles. Hidden below
+     1100px, where there is no gutter to put it in. */
+  .toc { display: none; position: fixed; left: 0; top: 50%; transform: translateY(-50%); z-index: 20; }
+  @media (min-width: 1100px) { .toc { display: block; } main { padding-left: 92px; } }
+  .toc-dashes { display: grid; justify-items: start; gap: 8px; padding: 12px 14px 12px 0; transition: opacity 140ms ease; }
+  .toc-dashes i { display: block; height: 2px; border-radius: 1px; background: var(--line); transition: background 140ms ease, height 140ms ease; }
+  .toc-dashes i[data-lv="2"] { width: 28px; }
+  .toc-dashes i[data-lv="3"] { width: 17px; }
+  .toc-dashes i.on { background: var(--ink); height: 3px; }
+  .toc-panel { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); min-width: 236px; max-width: 310px; max-height: 76vh; overflow-y: auto; padding: 9px 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 11px; box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16); opacity: 0; pointer-events: none; transition: opacity 140ms ease; }
+  .toc:hover .toc-dashes, .toc:focus-within .toc-dashes { opacity: 0; }
+  .toc:hover .toc-panel, .toc:focus-within .toc-panel { opacity: 1; pointer-events: auto; }
+  .toc-panel button { display: block; width: 100%; text-align: left; border: 0; background: none; font-family: var(--sans); font-size: 12.5px; line-height: 1.45; color: var(--ink-soft); padding: 5px 10px; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toc-panel button[data-lv="3"] { padding-left: 24px; }
+  .toc-panel button:hover { color: var(--ink); }
+  .toc-panel button.on { background: var(--surface2); color: var(--ink); }
+  .toc-panel button:focus-visible { outline: 2px solid var(--act); outline-offset: -2px; }
+  .pane h2, .pane h3 { scroll-margin-top: 88px; }
+  @media (prefers-reduced-motion: reduce) { .toc-dashes, .toc-panel, .toc-dashes i { transition: none; } }
+
+  /* part break -- the only thing allowed to interrupt a run of sections */
+  .divider { margin: 96px 0 0; border-top: 2px solid var(--line); padding-top: 26px; }
+  .divider .eyebrow { margin-bottom: 6px; }
+  .divider p { color: var(--ink-soft); font-size: 14.5px; max-width: 70ch; margin: 0; }
+
+  /* page-header meta strip */
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); padding: 16px 20px; margin-top: 20px; }
+  .meta dt { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); margin: 0 0 3px; }
+  .meta dd { margin: 0; font-size: 14px; }
+  .status { display: inline-block; font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 3px 9px; border-radius: 4px; background: var(--note-bg); border: 1px solid var(--note-edge); color: var(--note-ink); }
+
+  /* prose specimens */
+  .spec-row { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 0 18px; align-items: baseline; padding: 14px 2px; border-top: 1px dashed var(--line); }
+  .spec-row:first-child { border-top: 0; padding-top: 4px; }
+  .spec-row > .tag { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-faint); }
+  .spec-row > *:not(.tag) { margin: 0; max-width: none; }
+  .spec-row ul.pts { margin: 0; }
+
+  /* ---------- component 07 · code tour ---------- */
+  /* A tour block is the figure card itself: file strip on top, the code, then the usual spec viewer
+     and slug. The lead above it is ordinary prose, an idea and a support, so a chapter of blocks
+     reads as the page does everywhere else. */
+  .tour-lead { margin: 0 0 8px; font-size: 14px; max-width: 78ch; }
+  .tour-block + .tour-block { margin-top: 26px; }
+  .figcard.tour { padding: 0 0 8px; overflow: hidden; }
+  .figcard.tour > .specview { margin: 8px 14px 0; }
+  .figcard.tour > .tblock { margin: 10px 14px 0; }
+  .tour-file { display: flex; align-items: center; gap: 12px; padding: 8px 14px; background: var(--surface2);
+    border-bottom: 1px solid var(--line); font-family: var(--mono); font-size: 11.5px; }
+  .tour-path { color: var(--ink); overflow-wrap: anywhere; min-width: 0; }
+  .tour-path .dir { color: var(--ink-faint); }
+  .tour-lang { margin-left: auto; font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
+  /* The status pill says whether the file is already there. New is green with a plus, a deletion is
+     red with a minus, and an edit is neutral, so a reader never has to guess which paths exist yet. */
+  .tour-status { white-space: nowrap; font-size: 9.5px; letter-spacing: 0.09em; text-transform: uppercase; padding: 2px 8px;
+    border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); }
+  .tour-status.new { color: var(--fix); border-color: var(--fix); }
+  .tour-status.del { color: var(--crash); border-color: var(--crash); }
+  .tour-status.ren { color: var(--warn); border-color: var(--warn); }
+  .tour-from { text-decoration: line-through; color: var(--ink-faint); }
+  .tour-from .dir { color: var(--ink-faint); }
+  .tour-arrow { color: var(--ink-faint); margin: 0 7px; }
+  /* A visible part heading inside a pane, for the seam between a made-up chapter and a real one. */
+  h2.part { font-size: 24px; font-weight: 700; letter-spacing: -0.01em; margin: 96px 0 0; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+  .vh + h2.part { margin-top: 6px; }
+  h2.part + .section { margin-top: 28px; }
+  .tour-code { margin: 0; padding: 10px 0 6px; overflow-x: auto; font-family: var(--mono); font-size: 12px; line-height: 1.6;
+    color: var(--ink); tab-size: 4; }
+  .tour-line { display: flex; min-width: max-content; padding-right: 16px; }
+  .tour-sign { flex: 0 0 28px; text-align: center; user-select: none; color: var(--ink-faint); }
+  .tour-src { white-space: pre; }
+  .tour-line.add { background: var(--fix-soft); }
+  .tour-line.add .tour-sign { color: var(--fix); font-weight: 700; }
+  .tour-line.del { background: var(--crash-soft); }
+  .tour-line.del .tour-sign { color: var(--crash); font-weight: 700; }
+  /* A heading is a comment that opened a group of lines. It leaves the code column and sets in the
+     body face so the eye can find the groups before reading any of them. */
+  .tour-h { display: flex; align-items: center; gap: 10px; margin: 12px 16px 6px 12px; font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+  .tour-h:first-child { margin-top: 2px; }
+  .tour-h::after { content: ""; flex: 1; border-top: 1px dashed var(--line); }
+  .tour-code .token.comment, .tour-code .token.prolog, .tour-code .token.doctype, .tour-code .token.cdata { color: var(--ink-faint); font-style: italic; }
+  .tour-code .token.keyword, .tour-code .token.decorator, .tour-code .token.important, .tour-code .token.tag { color: var(--syn-kw); }
+  .tour-code .token.string, .tour-code .token.template-string, .tour-code .token.attr-value, .tour-code .token.number,
+  .tour-code .token.boolean, .tour-code .token.regex, .tour-code .token.triple-quoted-string { color: var(--syn-str); }
+  .tour-code .token.function, .tour-code .token.class-name, .tour-code .token.builtin, .tour-code .token.attr-name,
+  .tour-code .token.constant, .tour-code .token.maybe-class-name { color: var(--syn-fn); }
+  .tour-code .token.operator, .tour-code .token.punctuation { color: var(--ink-soft); }
+  .tour-code .token.tag .token.punctuation { color: var(--ink-soft); }
+  .tour-code .token.tag .token.class-name { color: var(--syn-fn); }
+  .tour-empty { padding: 12px 16px; color: var(--ink-faint); font-style: italic; }
+  .section.demo { margin-top: 6px; grid-template-columns: minmax(150px, 230px) minmax(0, 1fr); gap: 18px 24px; }
+  /* the column miniature needs cols-3 back, since .demo and .cols-3 tie on specificity */
+  .section.cols-3.demo { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 14px; }
+  @media (max-width: 960px) { .section.demo { grid-template-columns: 1fr; } }
+  .demo-box { position: relative; border: 1px dashed var(--line); border-radius: 8px; padding: 15px 14px 8px; }
+  .demo-box::after { content: attr(data-lbl); position: absolute; top: -8px; left: 12px; padding: 0 6px; background: var(--surface); font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .demo-box .lv-3 { font-size: 15px; margin: 0 0 10px; }
+  .demo-box ul.pts { font-size: 13px; margin-bottom: 8px; }
+  .demo-art { display: grid; place-items: center; min-height: 132px; border-radius: 6px; background: var(--surface2); color: var(--ink-soft); font-family: var(--mono); font-size: 11.5px; line-height: 1.7; text-align: center; padding: 14px; }
