@@ -52,7 +52,7 @@ order: 1
 | `- **Idea.** Support.` | An idea followed by its support. Without the bold, the bullet is an idea on its own. |
 | `1.` list | The numbered "shows" list, for what a figure shows. |
 
-A figure is a fence whose info string is `kind slug`, with an optional `wide`. The kinds are `seq`, `flow`, `erd`, `tbl`, `cg`, `screen`, `tour` and `walk`, plus `erd-key` and `html` for raw markup. Any other fence is ordinary Markdown and lands in the rail. The pages that show each kind are [[example-sequence]], [[example-flowchart]], [[example-erd]], [[example-walkthrough]], [[example-canvas]], [[example-lofi]], [[example-table]], [[example-callgraph]] and [[example-tour]].
+A figure is a fence whose info string is `kind slug`, with an optional `wide`. The kinds are `seq`, `flow`, `erd`, `tbl`, `cg`, `screen`, `tour` and `walk`, plus `erd-key` and `html` for raw markup. Any other fence is ordinary Markdown and lands in the rail. The pages that show each kind are [[example-sequence]], [[example-flowchart]], [[example-erd]], [[example-walkthrough]], [[example-canvas]], [[example-lofi]], [[example-relational-db-table]], [[example-callgraph]] and [[example-tour]].
 
 ## Ordinary Markdown
 
@@ -109,7 +109,7 @@ The table below has an alignment row with colons, a header cell with inline code
 | Column | Type | Note |
 | :--- | :---: | ---: |
 | `id` | text | primary key, a client generated ULID |
-| `completed_at` | int? | null while open, see [[example-table]] |
+| `completed_at` | int? | null while open, see [[example-relational-db-table]] |
 | `resolution` | text? | free text written when the order is closed |
 
 #### Things to watch

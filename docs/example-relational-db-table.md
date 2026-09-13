@@ -5,7 +5,7 @@ tags: [engdoc, example, tbl]
 link: https://claude.ai/code/artifact/3e084942-4c22-47c8-ac24-f5f0c4201293
 order: 8
 ---
-# Example: Relational table
+# Example: Relational DB table
 
 - **A relational table shows what is in one table, where an ERD shows how tables relate.** Key columns are tinted, a json column is clipped to one line and gives up the whole value on hover, and a wide table pins the columns that identify a row.
 - **A `tbl` fence is a label, columns and rows.**
@@ -70,25 +70,26 @@ rows:
     - pending
 ```
 
-### A json column is clipped to one line and gives up the whole value on hover.
+### A clipped column is one line in the grid and the whole value on hover.
 
-- **The clipped line is the point of comparison, not the data.** Twenty-odd characters is enough to see that two rows differ and which one looks wrong. Reading the document itself is a separate act, so it gets a separate gesture.
-- **A json cell is outlined and tinted, so a reader knows there is more.** A dashed box and the accent colour say hover me. An unmarked truncation just looks like the table is broken.
-- **The full value is formatted, not re-flowed.** Indented json in a fixed-width tooltip, which is the form anyone debugging it already reads.
+- **The clipped line is the point of comparison, not the data.** Twenty-odd characters is enough to see that two rows differ and which one looks wrong. Reading the value itself is a separate act, so it gets a separate gesture.
+- **A json column clips on its own, and any other column asks with `clip: n`.** n is how many characters stay in the cell. Here `metadata` and `result` are json and `note` is free text clipped at twenty-eight.
+- **A clipped cell carries a dotted underline, so a reader knows there is more.** It is the same mark a call graph row or an ERD column wears when hovering it opens a note. Cells that fit are left alone, so an unmarked cell is the whole value.
+- **The full value is formatted, not re-flowed.** A json value comes back as indented json in a fixed-width tooltip, the form anyone debugging it already reads. A clipped sentence sets in the body face and wraps.
 - **Cells hold real objects in the spec.** The renderer does the stringifying, so a spec author writes the structure once and never maintains a compact copy alongside a pretty one.
-- **Keyboard gets there too.** Each json cell is focusable and shows the same tooltip on focus, dismissed with escape.
+- **Keyboard gets there too.** Each clipped cell is focusable and shows the same tooltip on focus, dismissed with escape.
 
 #### Things to note
 
 - **The row here is a real failure.** Upload 812 carries a group_index with a null group_id, which is the exact shape that orphans a segment. Two clipped lines side by side are enough to see it.
-- **The tooltip is positioned in viewport space.** A tooltip inside the figure would be clipped by the figure's own horizontal scroll, which is where a wide table puts json columns.
+- **Clip the column that would otherwise set the table's width.** A free text note runs to a paragraph, and one long row would push every other column off the edge of the figure.
+- **The tooltip is positioned in viewport space and is opaque.** A tooltip inside the figure would be clipped by the figure's own horizontal scroll, which is where a wide table puts json columns.
 
-```tbl tbl/json-cols
+```tbl tbl/clipped-cols
 label: capture_uploads
-freeze: 1
 alt: >-
-  An uploads table whose metadata and result columns hold json, clipped to one line in the grid with the
-  formatted value available on hover.
+  An uploads table whose metadata and result columns hold json and whose note column is free text clipped
+  to twenty-eight characters. Clipped cells carry a dotted underline and give up the whole value on hover.
 columns:
   - name: id
     type: int
@@ -104,6 +105,9 @@ columns:
   - name: result
     type: jsonb
     json: true
+  - name: note
+    type: text?
+    clip: 28
 rows:
   - id: u1
     cells:
@@ -119,6 +123,7 @@ rows:
         trades:
           - paint
           - drywall
+      - Reprocessed once after the first pass dropped the hallway segment. Second pass clean.
   - id: u2
     cells:
       - '812'
@@ -131,6 +136,7 @@ rows:
         group_id: null
       - skip_processing: true
         reason: group_index without group_id
+      - Skipped by the guard. The client sent a group index with no group, which is the orphaned segment shape.
   - id: u3
     cells:
       - '813'
@@ -140,6 +146,7 @@ rows:
         os: '14'
         segments: 1
       - {}
+      - null
 ```
 
 ### A wide table scrolls, but the columns that identify a row stay pinned.
@@ -241,6 +248,7 @@ rows:
 | column | { name, type?, key?:'pk'\|'fk' } · pk tints with the activation colour, fk with the surface tint |
 | row | [ value, … ] in column order · or { id, cells:[…] } to name it |
 | json column | { name, type, json:true } · cells hold real objects · clipped to one line, formatted on hover and on focus |
+| clip | { name, type, clip: n } on any column · a value longer than n characters shows its first n and the whole value on hover and on focus · json columns clip at 24 unless told otherwise |
 | freeze | top-level `freeze: n` · the first n columns render as their own table and the rest scroll beside them |
 | walkthrough keys | `rowId` for a row · `rowId.column` for one cell · the key bands and the grid are structure and never dim |
 

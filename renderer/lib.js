@@ -1030,10 +1030,13 @@
   function renderTableFrozen(spec, uid, extra) {
     var n = spec.freeze || 0;
     if (!n) { return renderTable(spec, uid, extra); }
-    var pin = tableSlice(spec, 0, n, true);
+    /* The label sits above both halves as HTML. Drawn inside the pinned half it would be cut at the
+       width of the frozen columns, which is usually one id. */
+    var pin = tableSlice(spec, 0, n, false);
     var run = tableSlice(spec, n, (spec.columns || []).length, false);
     var pinW = layoutTable(pin, extra).w + 6;
-    return '<div class="tbl-split">' +
+    return (spec.label ? '<div class="tbl-label">' + esc(spec.label) + "</div>" : "") +
+           '<div class="tbl-split">' +
            '<div class="tbl-pin" style="width:' + pinW + 'px">' + renderTable(pin, uid + "-pin", extra, true) + "</div>" +
            '<div class="tbl-run">' + renderTable(run, uid + "-run", extra, true) + "</div>" +
            "</div>";
@@ -1050,19 +1053,32 @@
      lands at 0.01 and reads as missing rather than faint. */
   var TB = { headH: 32, rowH: 26, padX: 13, gap: 22, titleH: 26 };
 
-  /* A json column shows a clipped one-liner and keeps the formatted value for the tooltip. Putting
-     the whole document in the cell makes one column as wide as the rest of the table put together,
-     and a reader cannot parse pretty-printed json on a single line anyway. */
+  /* A clipped column shows a one-liner and keeps the whole value for the tooltip. json columns clip
+     by default, because putting a whole document in the cell makes one column as wide as the rest of
+     the table put together and a reader cannot parse pretty-printed json on a single line anyway. Any
+     other column opts in with clip: n, the number of characters that stay in the cell. */
+  function tableClipAt(c) {
+    if (typeof c.clip === "number") { return Math.max(4, c.clip); }
+    return c.json || c.clip === true ? 24 : 0;
+  }
   function tableCellText(c, v) {
     if (v == null) { return ""; }
-    if (!c.json || v === "") { return String(v); }
+    var n = tableClipAt(c);
+    if (!n || v === "") { return String(v); }
     var compact = typeof v === "string" ? v : JSON.stringify(v);
-    return compact.length > 24 ? compact.slice(0, 23) + "\u2026" : compact;
+    return compact.length > n ? compact.slice(0, n - 1) + "\u2026" : compact;
   }
-  function tableCellJson(c, v) {
-    if (!c.json || v == null || v === "") { return null; }
-    try { return specText(typeof v === "string" ? JSON.parse(v) : v); }
-    catch (err) { return String(v); }
+  /* The tooltip's text, or null when the cell shows everything it holds. */
+  function tableCellFull(c, v) {
+    if (v == null || v === "") { return null; }
+    if (c.json) {
+      /* Indented json, not the spec dumper: the spec is YAML, but the value in the column is json and the
+         tooltip should read the way a database client prints it. */
+      try { return JSON.stringify(typeof v === "string" ? JSON.parse(v) : v, null, 2); }
+      catch (err) { return String(v); }
+    }
+    var n = tableClipAt(c), str = String(v);
+    return n && str.length > n ? str : null;
   }
 
   function tableRowIds(spec) {
@@ -1133,21 +1149,25 @@
         out += '<path d="M1,' + y + " H" + (L.w - 1) + '" stroke="' + COL.line + '" stroke-width="1"/>';
       }
       L.cols.forEach(function (c, ci) {
-        var raw = cells[ci], shown = tableCellText(c, raw), full = tableCellJson(c, raw);
+        var raw = cells[ci], shown = tableCellText(c, raw), full = tableCellFull(c, raw);
         out += '<g data-k="' + esc(ids[ri] + "." + c.name) + '"';
         if (full !== null) {
-          out += ' data-json="' + esc(full) + '" tabindex="0" role="button" aria-label="' +
-                 esc(c.name + " for row " + ids[ri] + ", formatted value on hover") + '"';
+          out += ' data-json="' + esc(full) + '"' + (c.json ? "" : ' data-wrap="1"') + ' tabindex="0" role="button" aria-label="' +
+                 esc(c.name + " for row " + ids[ri] + ", full value on hover") + '"';
         }
         out += ">";
+        /* A clipped cell keeps the whole cell as its hit area and says "hover me" the way a call graph
+           row or an ERD column does: a dotted rule under the text, in ink, and nothing else. */
         if (full !== null) {
-          out += '<rect x="' + (L.x[ci] + 2) + '" y="' + (y + 2) + '" width="' + (L.widths[ci] - 4) + '" height="' + (TB.rowH - 4) +
-                 '" rx="4" fill="transparent" pointer-events="all" stroke="' + COL.line +
-                 '" stroke-width="1" stroke-dasharray="2 2"/>';
+          out += '<rect x="' + L.x[ci] + '" y="' + y + '" width="' + L.widths[ci] + '" height="' + TB.rowH +
+                 '" fill="transparent" pointer-events="all"/>';
         }
         out += '<text data-v="' + esc(ids[ri] + "." + c.name) + '" x="' + (L.x[ci] + TB.padX) + '" y="' + (y + 17) +
-               '" style="font:' + (c.key === "pk" ? "700 " : "") + '11.5px var(--mono); fill:' +
-               (full !== null ? COL.act : COL.ink) + '">' + esc(shown) + "</text>";
+               '" style="font:' + (c.key === "pk" ? "700 " : "") + '11.5px var(--mono); fill:' + COL.ink + '">' + esc(shown) + "</text>";
+        if (full !== null) {
+          out += '<path class="tbl-docline" d="M' + (L.x[ci] + TB.padX) + "," + (y + 20) + " H" +
+                 (L.x[ci] + TB.padX + Math.round(textW(shown, 11.5, true))) + '"/>';
+        }
         out += "</g>";
       });
     });
@@ -1157,7 +1177,9 @@
     var sizing = fixed
       ? "width:" + (L.w + 6) + "px; height:auto; display:block"
       : "width:100%; max-width:" + (L.w + 40) + "px; min-width:" + Math.min(L.w + 6, 420) + "px; height:auto";
-    return '<svg class="seq" viewBox="-2 0 ' + (L.w + 6) + " " + (L.h + 8) + '" role="img" aria-label="' +
+    /* A frozen half has no label of its own, so its viewBox starts under the empty title band. */
+    var top = fixed ? TB.titleH : 0;
+    return '<svg class="seq" viewBox="-2 ' + top + " " + (L.w + 6) + " " + (L.h + 8 - top) + '" role="img" aria-label="' +
            esc(spec.alt || spec.label || "table") + '" style="' + sizing + '">' + out + "</svg>";
   }
 
@@ -2146,7 +2168,9 @@
   function showJsonTip(el) {
     var t = jsonTipEl();
     var doc = el.getAttribute("data-doc");
-    t.className = doc ? "tbl-tip doc" : "tbl-tip";
+    /* A docstring or a clipped text cell is a sentence and wraps in the body face. json keeps its
+       monospace column shape. */
+    t.className = doc || el.hasAttribute("data-wrap") ? "tbl-tip doc" : "tbl-tip";
     t.textContent = doc || el.getAttribute("data-json");
     t.style.display = "block";
     t.style.left = "0px";
@@ -2156,8 +2180,8 @@
        list instead of following the pointer. A table cell has no box to belong to and anchors to itself.
 
        Only the viewport clamps it, and only downward. Sliding a panel back into view is easier to
-       follow than flipping it to the other side of what the reader is pointing at. Semi transparent
-       and never takes pointer events, so whatever it covers stays visible and hoverable. */
+       follow than flipping it to the other side of what the reader is pointing at. Opaque, so the value
+       reads over whatever it covers, and it never takes pointer events. */
     var host = el.closest ? el.closest(".cv-box") || el : el;
     var anchor = host.getBoundingClientRect(), r = t.getBoundingClientRect();
     t.style.left = Math.max(8, Math.min(anchor.left, window.innerWidth - r.width - 10)) + "px";
