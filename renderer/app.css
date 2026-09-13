@@ -5,7 +5,7 @@
 .doc-error { padding: 10px 14px; border: 1px dashed var(--crash); border-radius: 8px; color: var(--crash); font-family: var(--mono); font-size: 12px; }
 .section.cols-1 > .blk { border-top: 0; padding-top: 0; max-width: 78ch; }
 main > .section:first-of-type { margin-top: 40px; }
-pre code { font-family: var(--mono); font-size: 12px; }
+pre code { font-family: var(--mono); font-size: 12px; background: none; padding: 0; border-radius: 0; }
 main > pre, .rail pre, .blk pre { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; overflow-x: auto; }
 /* Header meta line from frontmatter, and the directory. */
 header > h1 { margin-bottom: 6px; }
@@ -39,3 +39,34 @@ header.doc-head > .head-main > h1 { margin-bottom: 14px; }
 .fm dd.status-done, .fm dd.status-shipped, .fm dd.status-implemented { color: var(--fix); }
 .fm dd.bad { color: var(--crash); }
 @media (max-width: 820px) { header.doc-head { grid-template-columns: 1fr; } .fm { max-width: 320px; } }
+
+/* Ordinary Markdown in a rail or a one-column block. lib.css styles the two text classes and the
+   points list; these rules give the rest of Markdown the same rhythm: one 14px gap between blocks,
+   nested bullets that match their parents, and a table and blockquote with an actual outline. */
+.section.cols-1 > .blk h4 { margin: 22px 0 9px; padding-top: 13px; border-top: 1px solid var(--line); }
+.section.cols-1 > .blk > h4:first-child, .rail > h4:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
+/* Lists: one gap between items at every depth, the same gap before a nested list, and a slightly
+   larger, equal space above and below the whole list. Markers cycle disc, circle, dash. */
+.blk ul.pts, .rail ul.pts, .blk ol.shows, .rail ol.shows { margin: 16px 0; gap: 8px; }
+.blk > :first-child, .rail > :first-child, .blk > ul.pts:first-child, .rail > ul.pts:first-child, .blk > ol.shows:first-child, .rail > ol.shows:first-child { margin-top: 0; }
+.blk > :last-child, .rail > :last-child, .blk > ul.pts:last-child, .rail > ul.pts:last-child, .blk > ol.shows:last-child, .rail > ol.shows:last-child { margin-bottom: 0; }
+ul.pts ul, ul.pts ol, .blk ul.pts ul, .rail ul.pts ul, ol.shows ul, ol.shows ol { margin: 8px 0 0; padding-left: 17px; gap: 8px; color: inherit; font-size: inherit; }
+ul.pts ul, ol.shows ul { list-style: disc; }
+ul.pts ul li { padding-left: 2px; }
+ul.pts ul li::before { content: none; }
+ul.pts li::marker, ul.pts ul li::marker { color: var(--ink-soft); }
+ul.pts ul, ol.shows ul { list-style-type: circle; }
+ul.pts ul ul, ol.shows ul ul { list-style-type: "\2013\a0\a0"; }
+ul.pts ul ul ul, ol.shows ul ul ul { list-style-type: disc; }
+ul.pts ul ul ul ul, ol.shows ul ul ul ul { list-style-type: circle; }
+ul.pts ul ul ul ul ul, ol.shows ul ul ul ul ul { list-style-type: "\2013\a0\a0"; }
+.blk pre, .rail pre, main > pre { margin: 0 0 14px; }
+.blk blockquote, .rail blockquote { margin: 0 0 14px; padding: 2px 0 2px 14px; border-left: 2px solid var(--line); color: var(--ink-soft); }
+.blk blockquote p, .rail blockquote p { margin: 0 0 8px; }
+.blk blockquote p:last-child, .rail blockquote p:last-child { margin-bottom: 0; }
+.blk hr, .rail hr { border: 0; border-top: 1px solid var(--line); margin: 18px 0; }
+.blk table, .rail table { border-collapse: collapse; margin: 0 0 14px; max-width: 100%; font-size: 14px; line-height: 1.45; border: 1px solid var(--line); }
+.blk th, .rail th, .blk td, .rail td { padding: 8px 12px; border: 1px solid var(--line); vertical-align: top; }
+.blk th, .rail th { text-align: left !important; font-weight: 600; color: var(--ink); background: var(--surface2); }
+.blk td, .rail td { color: var(--ink); }
+.blk td code, .rail td code, .blk th code, .rail th code { font-size: 0.85em; }
