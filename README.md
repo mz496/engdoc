@@ -5,14 +5,14 @@ The eng-doc component library, split so content and renderer change independentl
 ```
 renderer/   lib.css, lib.js (the figure components), app.js (Markdown to page), vendor/ (dagre, Prism, markdown-it, js-yaml)
 docs/       one Markdown file per document, figures as fenced YAML
-serve.mjs   static server with live reload, no dependencies
-build.mjs   one self-contained HTML per document, for publishing as an artifact
+scripts/serve.mjs   static server with live reload, no dependencies
+scripts/build.mjs   one self-contained HTML per document, for publishing as an artifact
 ```
 
 ## Run
 
 ```sh
-node serve.mjs            # http://localhost:4747/  serves docs/index.md
+node scripts/serve.mjs            # http://localhost:4747/  serves docs/index.md
 open 'http://localhost:4747/?doc=docs/index.md'
 ```
 
@@ -21,7 +21,7 @@ Edit a `.md` and the page re-renders in place, keeping your scroll position. Edi
 ## Publish
 
 ```sh
-node build.mjs docs/index.md            # writes dist/index.html
+node scripts/build.mjs docs/index.md            # writes dist/index.html
 ```
 
 The output has no doctype or `<html>` wrapper, which is what the artifact host expects. Publish it with the Artifact tool, passing the existing URL to update in place.

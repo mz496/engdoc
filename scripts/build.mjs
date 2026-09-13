@@ -1,11 +1,11 @@
 // One self-contained HTML per document, the shape the artifact host wants: no doctype or <html>, the
 // renderer and both vendored libraries inlined, and the Markdown carried in a script tag the app reads
-// instead of fetching. Usage: node build.mjs docs/example.md [dist/out.html]
+// instead of fetching. Usage: node scripts/build.mjs docs/example.md [dist/out.html]
 import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
-const ROOT = path.dirname(url.fileURLToPath(import.meta.url));
+const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..");
 const docRel = process.argv[2] || "docs/example.md";
 const outFile = process.argv[3] || path.join("dist", path.basename(docRel, ".md") + ".html");
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");

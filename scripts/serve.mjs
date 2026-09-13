@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
-const ROOT = path.dirname(url.fileURLToPath(import.meta.url));
+const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..");
 const PORT = Number(process.env.PORT || 4747);
 const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
   ".css": "text/css; charset=utf-8", ".md": "text/markdown; charset=utf-8", ".yaml": "text/yaml; charset=utf-8", ".yml": "text/yaml; charset=utf-8",
