@@ -122,37 +122,14 @@ calls:
 - **One drawing per file under `eval/battery/v1/positives/` and `eval/battery/v1/negatives/`.** Each carries `label`, `source` as `human` or `walk`, a `tags` list such as `tilted` or `wobbly`, and the strokes with raw `t`. The format is the Spike 1 drawing shape plus those three fields.
 - **The battery is immutable once a run cites it.** New drawings go into `v2`. A run records which battery version and which git hash it ran against.
 
-```tbl tbl/spike2-battery
-label: battery drawing
-alt: A table of the fields on a battery drawing file and what each is for.
-columns:
-  - name: field
-    type: text
-    key: pk
-  - name: value
-    type: text
-  - name: used for
-    type: text
-rows:
-  - - id
-    - ulid
-    - file name, join key in run output
-  - - label
-    - one of the five objects, or none
-    - ground truth for a commit
-  - - source
-    - human | walk
-    - stratifying the ROC
-  - - tags
-    - tilted, wobbly, adversarial, loop
-    - slicing hard cases
-  - - strokes
-    - list of strokes, each a list of [x, y, t]
-    - replay in time order
-  - - seed
-    - integer, walks only
-    - regenerating a walk
-```
+| field | value | used for |
+| --- | --- | --- |
+| id | ulid | file name, join key in run output |
+| label | one of the five objects, or none | ground truth for a commit |
+| source | human \| walk | stratifying the ROC |
+| tags | tilted, wobbly, adversarial, loop | slicing hard cases |
+| strokes | list of strokes, each a list of [x, y, t] | replay in time order |
+| seed | integer, walks only | regenerating a walk |
 
 ### Gate v2 needs a small distance and a clear margin.
 
@@ -253,55 +230,24 @@ edges:
 - **The ghost's alpha tracks the margin, and it disappears when the trail goes idle.** No cooldown, no ring marking. The visitor sees what the system is thinking and is never surprised by ink they did not ask for.
 - **The fit, snap, and draw code is shared with the commit path.** The only new code is the state and the alpha rule.
 
+| parameter | start value | where it bites |
+| --- | --- | --- |
+| distance threshold τ₁ | from ROC | gate v2, replaces Spike 1's τ |
+| margin threshold τ₂ | from ROC, relative | gate v2, top template vs second |
+| smoothing kernel | 5-tap gaussian, σ 1 point | after resample, both sides |
+| rotation sweep | −45°..+45°, step 15°, best of 7 | optional, only if tilt killed Spike 1 attempts |
+| aspect prefilter | ratio within 2× | optional, only with the sweep |
+| replay cadence | 100 ms drawing time | harness tick |
+| sweep grid | τ₁ 40 steps × τ₂ 20 steps | ROC resolution |
+| battery size | ~50 negatives, ~50 positives | ROC resolution |
+| walk generator | 200–600 points, heading noise σ 0.3 rad | negatives |
+| ghost alpha | 0.15–0.4 by margin | fan-only mode |
+
 #### Things to watch
 
 - **The harness must construct the ring the same way the page does.** Same capacity, same eviction by age, same dedupe. Import `src/engine/ring.ts` into the harness rather than reimplementing it; it has no DOM dependency.
 - **Adversarial scribbles are the ones that look like something.** A random walk that happens to close a loop is the interesting negative. Tag those and read the per-tag slice.
 - **A wrong-label commit on a positive is a false commit.** Completing a sincere star as a heart is worse than not completing it, and the ROC must count it that way.
-
-```tbl tbl/spike2-constants
-label: starting constants
-alt: A table of tunable parameters for Spike 2 with their starting values.
-columns:
-  - name: parameter
-    type: text
-    key: pk
-  - name: start value
-    type: text
-  - name: where it bites
-    type: text
-rows:
-  - - distance threshold τ₁
-    - from ROC
-    - gate v2, replaces Spike 1's τ
-  - - margin threshold τ₂
-    - from ROC, relative
-    - gate v2, top template vs second
-  - - smoothing kernel
-    - 5-tap gaussian, σ 1 point
-    - after resample, both sides
-  - - rotation sweep
-    - −45°..+45°, step 15°, best of 7
-    - optional, only if tilt killed Spike 1 attempts
-  - - aspect prefilter
-    - ratio within 2×
-    - optional, only with the sweep
-  - - replay cadence
-    - 100 ms drawing time
-    - harness tick
-  - - sweep grid
-    - τ₁ 40 steps × τ₂ 20 steps
-    - ROC resolution
-  - - battery size
-    - ~50 negatives, ~50 positives
-    - ROC resolution
-  - - walk generator
-    - 200–600 points, heading noise σ 0.3 rad
-    - negatives
-  - - ghost alpha
-    - 0.15–0.4 by margin
-    - fan-only mode
-```
 
 ## Test
 

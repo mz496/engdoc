@@ -92,49 +92,22 @@ steps:
 - **Particles live in their own array, not in the ring.** They are rendering state, not input. Capping the array at a few hundred keeps a frantic scribbler from allocating unboundedly.
 - **Reduced motion disables the particle system and the width modulation.** Check `matchMedia("(prefers-reduced-motion: reduce)")` at start and listen for changes. The trail becomes a thin static-width line that fades.
 
+| parameter | start value | where it bites |
+| --- | --- | --- |
+| ring capacity | 512 samples | 3 s at 120 Hz with headroom |
+| ring buffer age | 3 s | eviction, later the window cut |
+| trail fade age | 1.5 s | point expiry into particles |
+| width range | 1.5–6 px | velocity to width clamp |
+| width smoothing | EMA α 0.3 | per-segment width jitter |
+| particles per expiring point | 2–3 | fade layer |
+| particle life | 300–600 ms | fade layer |
+| particle cap | 300 | fade layer allocation |
+
 #### Things to watch
 
 - **Passive listeners only, and nothing heavier than a push in the handler.** The premise is that the page underneath keeps working. If the trail ever costs a dropped scroll frame, the premise is compromised. Measure with the performance panel while scrolling a long page.
 - **Pause when the tab is hidden and idle when there is nothing to draw.** Skip the frame when the buffer is empty and no particles are alive, so an idle tab costs nothing.
 - **Pointer leaves the window.** `pointerleave` on the document should not clear the buffer; the trail should just age out. Otherwise the ink vanishes the moment the cursor crosses the browser chrome.
-
-```tbl tbl/spike0-constants
-label: starting constants
-alt: A table of tunable parameters for Spike 0 with their starting values.
-columns:
-  - name: parameter
-    type: text
-    key: pk
-  - name: start value
-    type: text
-  - name: where it bites
-    type: text
-rows:
-  - - ring capacity
-    - 512 samples
-    - 3 s at 120 Hz with headroom
-  - - ring buffer age
-    - 3 s
-    - eviction, later the window cut
-  - - trail fade age
-    - 1.5 s
-    - point expiry into particles
-  - - width range
-    - 1.5–6 px
-    - velocity to width clamp
-  - - width smoothing
-    - EMA α 0.3
-    - per-segment width jitter
-  - - particles per expiring point
-    - 2–3
-    - fade layer
-  - - particle life
-    - 300–600 ms
-    - fade layer
-  - - particle cap
-    - '300'
-    - fade layer allocation
-```
 
 ## Test
 

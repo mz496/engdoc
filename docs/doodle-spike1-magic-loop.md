@@ -144,37 +144,14 @@ calls:
 - **Collect turns mouse-down into pen-down and shows the collect panel.** Matching is off. The trail renderer is reused so a recorded stroke looks like the live one.
 - **Debug is a toggle, not a mode.** It overlays the debug panel on whichever mode is active. In Spike 2 the toolbar gains a fan-only toggle in the same way, and the collect panel gains a set selector for the battery.
 
-```tbl tbl/spike1-components
-label: components
-alt: A table of the six React components with what each owns and how it reaches the engine.
-columns:
-  - name: component
-    type: text
-    key: pk
-  - name: owns
-    type: text
-  - name: engine contact
-    type: text
-rows:
-  - - App
-    - mode state, debug toggle, layout
-    - holds the engine ref, passes it down
-  - - TrailCanvas
-    - the one canvas element
-    - mount and unmount in an effect
-  - - Toolbar
-    - mode buttons, debug toggle, collapsed dot in ambient
-    - setMode
-  - - CollectPanel
-    - label field, save, undo, clear, template list, export and import
-    - beginDrawing, undoStroke, endDrawing
-  - - StrokeThumb
-    - a small static canvas of one drawing
-    - none, pure render of a Drawing
-  - - DebugPanel
-    - readouts, τ slider, window vs prefix inset, commit log
-    - subscribe and getSnapshot, setThreshold
-```
+| component | owns | engine contact |
+| --- | --- | --- |
+| App | mode state, debug toggle, layout | holds the engine ref, passes it down |
+| TrailCanvas | the one canvas element | mount and unmount in an effect |
+| Toolbar | mode buttons, debug toggle, collapsed dot in ambient | setMode |
+| CollectPanel | label field, save, undo, clear, template list, export and import | beginDrawing, undoStroke, endDrawing |
+| StrokeThumb | a small static canvas of one drawing | none, pure render of a Drawing |
+| DebugPanel | readouts, τ slider, window vs prefix inset, commit log | subscribe and getSnapshot, setThreshold |
 
 ### Data shapes are fixed here and reused by the Spike 2 battery.
 
@@ -182,37 +159,14 @@ rows:
 - **The visitor's trail has no pen-up.** The bare cursor is one continuous stroke. So a multi-stroke template is flattened into one polyline with a `lift` flag on the first point of each stroke after the first, and the completion animation lifts the ink across a flagged segment rather than drawing it. Single-stroke templates are the easy case and should be the first ones tested.
 - **An index entry is a prefix, its remainder, and where it came from.** The prefix is 64 normalized points. The remainder is the rest of the template expressed in the prefix's normalized frame, not its own. This matters: the Procrustes transform is solved on the prefix and applied to the remainder, so both must share one centroid and one scale.
 
-```tbl tbl/spike1-shapes
-label: data shapes
-alt: A table of the data shapes in Spike 1 with their fields and where they are produced.
-columns:
-  - name: shape
-    type: text
-    key: pk
-  - name: fields
-    type: text
-  - name: produced by
-    type: text
-rows:
-  - - Drawing
-    - id, label, strokes as lists of [x, y, t]
-    - collect panel, saved to localStorage and exported
-  - - Template
-    - id, label, points as [x, y, lift]
-    - buildIndex, strokes flattened with lift flags
-  - - IndexEntry
-    - templateId, frac, prefix Float32Array(128), remainder as [x, y, lift], centroid, scale
-    - buildIndex, one per template per prefix fraction
-  - - Window
-    - points as [x, y], t0, t1, pathLength
-    - segment, one per candidate cut
-  - - Match
-    - entry, score, window, transform {s, θ, tx, ty}
-    - gate then procrustes
-  - - Snapshot
-    - mode, state, best match, candidate count, tick ms, τ, last 50 events
-    - engine, at tick rate, read by DebugPanel
-```
+| shape | fields | produced by |
+| --- | --- | --- |
+| Drawing | id, label, strokes as lists of [x, y, t] | collect panel, saved to localStorage and exported |
+| Template | id, label, points as [x, y, lift] | buildIndex, strokes flattened with lift flags |
+| IndexEntry | templateId, frac, prefix Float32Array(128), remainder as [x, y, lift], centroid, scale | buildIndex, one per template per prefix fraction |
+| Window | points as [x, y], t0, t1, pathLength | segment, one per candidate cut |
+| Match | entry, score, window, transform {s, θ, tx, ty} | gate then procrustes |
+| Snapshot | mode, state, best match, candidate count, tick ms, τ, last 50 events | engine, at tick rate, read by DebugPanel |
 
 ## Build A — collect mode
 
@@ -415,61 +369,22 @@ edges:
 - **An inset with the best candidate window and the best entry's prefix, both normalized.** Two small canvases drawn from the snapshot. Seeing the two 64-point clouds side by side is how Chamfer confusions get diagnosed.
 - **A log of the last fifty events: commits, near misses, and transitions.** Template, score, window length, and time, with a copy button. This is the observation checklist's data source.
 
-```tbl tbl/spike1-constants
-label: starting constants
-alt: A table of tunable parameters for Spike 1 with their starting values.
-columns:
-  - name: parameter
-    type: text
-    key: pk
-  - name: start value
-    type: text
-  - name: where it bites
-    type: text
-rows:
-  - - resample points
-    - '64'
-    - normalize, Chamfer 64×64
-  - - prefix fractions
-    - 30–90%, step 10
-    - template index, 7 entries per drawing
-  - - candidate window span
-    - 0.5–3 s
-    - segmenter
-  - - minimum window path length
-    - 60 px
-    - segmenter, rejects jitter
-  - - candidates per tick
-    - '6'
-    - segmenter cap, tick budget
-  - - velocity minimum
-    - below 0.4 × median speed
-    - segmenter cut points
-  - - dedupe distance
-    - 1 px
-    - before resample
-  - - match cadence
-    - 10 Hz
-    - match tick throttle, snapshot rate
-  - - tick budget
-    - 4 ms
-    - move to a Worker above this
-  - - commit animation
-    - 500 ms
-    - remainder ink-in
-  - - hold, fade
-    - 300 ms, 500 ms
-    - state machine
-  - - post-commit cooldown
-    - 2 s
-    - matching pauses
-  - - snap falloff
-    - 8 points
-    - residual distribution
-  - - commit threshold τ
-    - generous, self-tuned
-    - the one gate this spike has
-```
+| parameter | start value | where it bites |
+| --- | --- | --- |
+| resample points | 64 | normalize, Chamfer 64×64 |
+| prefix fractions | 30–90%, step 10 | template index, 7 entries per drawing |
+| candidate window span | 0.5–3 s | segmenter |
+| minimum window path length | 60 px | segmenter, rejects jitter |
+| candidates per tick | 6 | segmenter cap, tick budget |
+| velocity minimum | below 0.4 × median speed | segmenter cut points |
+| dedupe distance | 1 px | before resample |
+| match cadence | 10 Hz | match tick throttle, snapshot rate |
+| tick budget | 4 ms | move to a Worker above this |
+| commit animation | 500 ms | remainder ink-in |
+| hold, fade | 300 ms, 500 ms | state machine |
+| post-commit cooldown | 2 s | matching pauses |
+| snap falloff | 8 points | residual distribution |
+| commit threshold τ | generous, self-tuned | the one gate this spike has |
 
 ## Test
 
