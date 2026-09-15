@@ -68,5 +68,5 @@ ul.pts ul ul ul ul ul, ol.shows ul ul ul ul ul { list-style-type: "\2013\a0\a0";
 .blk table, .rail table { border-collapse: collapse; margin: 0 0 14px; max-width: 100%; font-size: 14px; line-height: 1.45; border: 1px solid var(--line); }
 .blk th, .rail th, .blk td, .rail td { padding: 8px 12px; border: 1px solid var(--line); vertical-align: top; }
 .blk th, .rail th { text-align: left !important; font-weight: 600; color: var(--ink); background: var(--surface2); }
-.blk td, .rail td { color: var(--ink); }
+.blk td, .rail td { color: var(--ink-soft); }
 .blk td code, .rail td code, .blk th code, .rail th code { font-size: 0.85em; }

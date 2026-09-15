@@ -122,28 +122,18 @@
 
   /* ---------- prose ---------- */
 
-  /* Idea and support. A run that opens with bold is an idea followed by support, and bold is the
-     authoring notation only: the output never carries weight. A list item with no bold is an idea on
-     its own, and a paragraph with no bold is support on its own, which matches how each is used. */
-  function ideaSupport(inline, plainClass) {
+  /* Idea and support. Plain text is support wherever it sits: a paragraph, a list item at any depth,
+     a table cell. Bold is the authoring notation for an idea, and every bold span, wherever it falls in
+     the run, becomes one. The output never carries weight: brightness is the whole signal. */
+  function ideaSupport(inline) {
     var ch = inline.children || [];
     while (ch.length && ch[0].type === "text" && ch[0].content === "") { ch.shift(); }
-    if (ch.length && ch[0].type === "strong_open") {
-      var close = -1;
-      for (var i = 1; i < ch.length; i++) { if (ch[i].type === "strong_close" && ch[i].level === ch[0].level) { close = i; break; } }
-      if (close > 0) {
-        ch[0] = tok("html_inline", '<span class="idea">');
-        ch[close] = tok("html_inline", "</span>");
-        var rest = ch.slice(close + 1);
-        if (rest.some(function (t) { return t.type !== "text" || t.content.trim() !== ""; })) {
-          if (rest[0].type === "text") { rest[0].content = rest[0].content.replace(/^\s+/, ""); }
-          ch.splice(close + 1, 0, tok("html_inline", ' <span class="support">'));
-          ch.push(tok("html_inline", "</span>"));
-        }
-        return;
-      }
+    if (!ch.length) { return; }
+    for (var i = 0; i < ch.length; i++) {
+      if (ch[i].type === "strong_open") { ch[i] = tok("html_inline", '<span class="idea">'); }
+      else if (ch[i].type === "strong_close") { ch[i] = tok("html_inline", "</span>"); }
     }
-    ch.unshift(tok("html_inline", '<span class="' + plainClass + '">'));
+    ch.unshift(tok("html_inline", '<span class="support">'));
     ch.push(tok("html_inline", "</span>"));
   }
   function tok(type, content) { var t = new md.core.State.prototype.Token(type, "", 0); t.content = content; return t; }
@@ -155,10 +145,8 @@
       if (t.type === "ordered_list_open") { t.attrJoin("class", "shows"); }
       if (t.type === "heading_open" && t.tag === "h4") { t.attrJoin("class", "notes-h"); }
       if (t.type === "heading_open" && t.tag === "h2") { t.attrJoin("class", "part"); }
-      if (t.type === "inline" && i > 0 && tokens[i - 1].type === "paragraph_open") {
-        var prev = tokens[i - 1], inList = false;
-        for (var j = i - 2; j >= 0; j--) { if (tokens[j].level < prev.level) { inList = tokens[j].type === "list_item_open"; break; } }
-        ideaSupport(t, inList ? "idea" : "support");
+      if (t.type === "inline" && i > 0 && (tokens[i - 1].type === "paragraph_open" || tokens[i - 1].type === "td_open")) {
+        ideaSupport(t);
       }
     }
   }
