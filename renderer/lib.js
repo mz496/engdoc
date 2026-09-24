@@ -2441,10 +2441,10 @@
     q(".screen-mount").forEach(function (el) { var key = el.getAttribute("data-ex"); if (SCREENS[key]) { el.innerHTML = renderScreens(SCREENS[key], "sc-" + safeId(key), key); } });
     q("pre[data-screenspec]").forEach(function (el) { el.textContent = specText(SCREENS[el.getAttribute("data-screenspec")]); });
     q(".wt").forEach(mountWalkthrough);
-    /* Every canvas inside a figure card gets the expand control, so any figure that meets the canvas
-       contract gets one for free, and a canvas inside a walkthrough panel simply does not. */
+    /* Every canvas inside a figure card or a walkthrough panel gets the expand control, so any figure
+       that meets the canvas contract gets one for free. */
     q("svg[data-canvas]").forEach(function (svg) {
-      var card = svg.closest(".figcard");
+      var card = svg.closest(".figcard, .wt-panel");
       if (!card || card.querySelector(".cv-full")) { return; }
       var b = document.createElement("button");
       b.type = "button";
@@ -2739,24 +2739,96 @@
     pane.scrollTop += fy * (now.height - wasH);
   }
 
+  /* Fit frames the drawing, not the whole room around it. The room is centred on the drawing, so
+     centring the pane lands on it. */
+  function cvFitZoom() {
+    var pane = cvStageBox.querySelector(".cv-stage-pane");
+    return Math.min(1, (pane.clientWidth - 32) / cvFull.dw, (pane.clientHeight - 32) / cvFull.dh);
+  }
+
   function cvFit() {
     if (!cvFull) { return; }
-    var pane = cvStageBox.querySelector(".cv-stage-pane");
     cvSlack();
-    cvZoom(Math.min(1, (pane.clientWidth - 32) / cvFull.w, (pane.clientHeight - 32) / cvFull.h));
+    cvZoom(cvFitZoom());
     cvCenter();
   }
 
+  /* The top level boxes, the ones positioned on the svg itself rather than inside a grouping. */
+  function cvTopBoxes(svg) {
+    return [].slice.call(svg.querySelectorAll(".cv-box")).filter(function (b) {
+      return !(b.parentNode && b.parentNode.closest && b.parentNode.closest(".cv-box"));
+    });
+  }
+
+  /* On the stage the drawing sits in a room about three windows wide and three tall, so any box can
+     be dragged well clear of the rest. The room is only viewBox: nothing moves when it opens. */
+  function cvGrowRoom() {
+    var pane = cvStageBox.querySelector(".cv-stage-pane"), z = cvFitZoom();
+    var W = Math.max(cvFull.dw, Math.round(3 * pane.clientWidth / z));
+    var H = Math.max(cvFull.dh, Math.round(3 * pane.clientHeight / z));
+    var ox = Math.round((W - cvFull.dw) / 2), oy = Math.round((H - cvFull.dh) / 2);
+    cvFull.svg.setAttribute("viewBox", (cvFull.vb.x - ox) + " " + (cvFull.vb.y - oy) + " " + W + " " + H);
+    cvFull.w = W;
+    cvFull.h = H;
+  }
+
+  /* On close the room shrinks back to the drawing. A box dragged above or left of where the drawing
+     began would need a negative position, which a spec cannot hold, so every top level box shifts by
+     the same amount to bring the leftmost and topmost back to the old edge. Then the renderer redraws
+     its edges and rewrites the spec, as after any drop. */
+  function cvShrinkRoom() {
+    var svg = cvFull.svg, vb = cvFull.vb, pad = 24, boxes = cvTopBoxes(svg);
+    var minX = vb.x, minY = vb.y, maxX = vb.x + vb.width, maxY = vb.y + vb.height;
+    boxes.forEach(function (b) {
+      var at = cvPos(b), w = +b.getAttribute("data-w") || 0, h = +b.getAttribute("data-h") || 0;
+      if (at.x < vb.x) { minX = Math.min(minX, at.x - pad); }
+      if (at.y < vb.y) { minY = Math.min(minY, at.y - pad); }
+      if (at.x + w > vb.x + vb.width) { maxX = Math.max(maxX, at.x + w + pad); }
+      if (at.y + h > vb.y + vb.height) { maxY = Math.max(maxY, at.y + h + pad); }
+    });
+    var sx = Math.round(vb.x - minX), sy = Math.round(vb.y - minY);
+    var grew = sx || sy || maxX > vb.x + vb.width || maxY > vb.y + vb.height;
+    if (sx || sy) {
+      boxes.forEach(function (b) {
+        var at = cvPos(b);
+        b.setAttribute("transform", "translate(" + Math.round(at.x + sx) + "," + Math.round(at.y + sy) + ")");
+      });
+    }
+    svg.setAttribute("viewBox", vb.x + " " + vb.y + " " + Math.ceil(maxX + sx - vb.x) + " " + Math.ceil(maxY + sy - vb.y));
+    var r = CANVAS[svg.getAttribute("data-canvas")];
+    if (grew && r && r.move) { r.move(svg); }
+    if (grew && r && r.drop) { r.drop(svg); }
+  }
+
   function cvOpenFull(btn) {
-    var card = btn.closest(".figcard"), svg = card && card.querySelector("svg[data-canvas]");
+    var card = btn.closest(".figcard, .wt-panel"), svg = card && card.querySelector("svg[data-canvas]");
     if (!svg || cvFull) { return; }
     var stage = cvStage(), canvas = stage.querySelector(".cv-stage-canvas"), vb = svg.viewBox.baseVal;
-    var slug = card.querySelector(".tblock .nm");
-    cvFull = { svg: svg, parent: svg.parentNode, next: svg.nextSibling, w: vb.width, h: vb.height, zoom: 1, width: svg.style.width };
-    stage.querySelector(".cv-stage-name").textContent = slug ? slug.textContent : "";
-    canvas.appendChild(svg);
+    var wt = card.closest(".wt"), slug = wt ? null : card.querySelector(".tblock .nm");
+    cvFull = { svg: svg, parent: svg.parentNode, next: svg.nextSibling, w: vb.width, h: vb.height, dw: vb.width, dh: vb.height,
+      vb: { x: vb.x, y: vb.y, width: vb.width, height: vb.height }, zoom: 1, width: svg.style.width };
+    stage.querySelector(".cv-stage-name").textContent = wt ? wt.getAttribute("aria-label") || "" : slug ? slug.textContent : "";
+    /* A walkthrough's drawing goes into a .wt-stage of its own, so every rule that styles a step on
+       the page, the renderer's or a document's own, styles it the same way here. It also brings its
+       scrubber along, docked under the pane. The dock keeps its own listeners, so moving it is all
+       it takes. */
+    if (wt) {
+      cvFull.wrap = document.createElement("div");
+      cvFull.wrap.className = "wt-stage cv-wt";
+      cvFull.wrap.appendChild(svg);
+      canvas.appendChild(cvFull.wrap);
+    } else {
+      canvas.appendChild(svg);
+    }
+    if (wt) {
+      cvFull.wtStage = wt.querySelector(".wt-stage");
+      cvFull.dock = wt.querySelector(".wt-dock");
+      cvFull.dockParent = cvFull.dock.parentNode;
+      stage.appendChild(cvFull.dock);
+    }
     stage.classList.add("on");
     document.body.style.overflow = "hidden";
+    cvGrowRoom();
     cvFit();
     stage.querySelector(".cv-close").focus();
   }
@@ -2767,6 +2839,13 @@
     hideJsonTip();
     cvFull.svg.style.width = cvFull.width;
     cvFull.parent.insertBefore(cvFull.svg, cvFull.next);
+    if (cvFull.wrap) { cvFull.wrap.remove(); }
+    // After the svg is home, so the spec it rewrites is the one in its own card.
+    cvShrinkRoom();
+    if (cvFull.dock) {
+      cvFull.dockParent.appendChild(cvFull.dock);
+      cvFull.wtStage.dispatchEvent(new CustomEvent("cv:moved", { bubbles: true }));
+    }
     cvStageBox.classList.remove("on");
     document.body.style.overflow = "";
     cvFull = null;
@@ -2780,6 +2859,11 @@
   document.addEventListener("keydown", function (e) {
     if (!cvFull) { return; }
     if (e.key === "Escape") { cvCloseFull(); return; }
+    if (cvFull.dock && (e.key === "ArrowRight" || e.key === "ArrowLeft") && !(e.target && e.target.type === "range")) {
+      e.preventDefault();
+      cvFull.dock.querySelector(e.key === "ArrowRight" ? ".wt-next" : ".wt-prev").click();
+      return;
+    }
     if (e.key === "+" || e.key === "=") { e.preventDefault(); cvZoom(cvFull.zoom * 1.25); }
     else if (e.key === "-") { e.preventDefault(); cvZoom(cvFull.zoom / 1.25); }
     else if (e.key === "0") { e.preventDefault(); cvFit(); }
@@ -2789,12 +2873,17 @@
 
   var cvDrag = null, cgHover = null, cvPan = null;
 
+  /* In a walkthrough the scrubber owns what is lit, on the page or expanded on the stage. */
+  function cvInWalk(el) {
+    return !!el.closest(".wt-stage");
+  }
+
   document.addEventListener("mouseover", function (e) {
     if (cvDrag || cvPan) { return; }
     var row = e.target && e.target.closest ? e.target.closest(".cg-fn") : null;
     /* Inside a walkthrough the scrubber owns what is lit. Two focus systems writing opacity on the
        same rows read as a bug, so hover stands down and only dragging stays live. */
-    if (row && row.closest(".wt-stage")) { row = null; }
+    if (row && cvInWalk(row)) { row = null; }
     if (row === cgHover) { return; }
     if (cgHover) { cgClear(cgHover.ownerSVGElement); }
     cgHover = row;
@@ -2831,7 +2920,7 @@
     if (cvDrag || cvPan) { return; }
     var t = e.target && e.target.closest ? e.target.closest(".cv-box") : null;
     if (t && !(t.ownerSVGElement && t.ownerSVGElement.classList.contains("bx"))) { t = null; }
-    if (t && t.closest(".wt-stage")) { t = null; }
+    if (t && cvInWalk(t)) { t = null; }
     if (t === bxHover) { return; }
     if (bxHover) { bxClear(bxHover.ownerSVGElement); }
     bxHover = t;
@@ -2841,7 +2930,7 @@
   document.addEventListener("mouseover", function (e) {
     if (cvDrag || cvPan) { return; }
     var t = e.target && e.target.closest ? e.target.closest(".erd-col, .erd-head") : null;
-    if (t && t.closest(".wt-stage")) { t = null; }
+    if (t && cvInWalk(t)) { t = null; }
     if (t === erdHover) { return; }
     if (erdHover) { erdClear(erdHover.ownerSVGElement); }
     erdHover = t;
@@ -2962,7 +3051,8 @@
     cvDrag.box.classList.remove("dragging");
     var dropper = CANVAS[cvDrag.svg.getAttribute("data-canvas")];
     if (dropper && dropper.drop) { dropper.drop(cvDrag.svg, cvDrag.box); }
-    var stage = cvDrag.svg.closest ? cvDrag.svg.closest(".wt-stage") : null;
+    // Expanded, the nearest .wt-stage is the stand-in wrapper. The walkthrough listens on its own.
+    var stage = cvFull && cvFull.svg === cvDrag.svg && cvFull.wtStage ? cvFull.wtStage : cvDrag.svg.closest(".wt-stage");
     if (stage) { stage.dispatchEvent(new CustomEvent("cv:moved", { bubbles: true })); }
     cvDrag = null;
   }

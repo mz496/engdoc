@@ -176,6 +176,15 @@
   .wt-stage .wt-future { opacity: 0.1; }
   .wt-stage .wt-past { opacity: 0.42; }
   .wt-stage .wt-now { opacity: 1; }
+  /* The scrubber and its note stay pinned to the bottom of the window while the walkthrough is on
+     screen, so a tall figure can be stepped through without scrolling back down to the controls. */
+  .wt-dock { position: sticky; bottom: 0; z-index: 5; margin: 0 -14px -12px; padding: 0 14px 12px;
+    background: var(--surface); border-radius: 0 0 10px 10px; }
+  .wt-panel { position: relative; }
+  /* Expanded, the dock is the stage's bottom bar rather than a sticky strip on the page. */
+  .cv-wt { display: inline-block; vertical-align: top; overflow: visible; }
+  .cv-stage > .wt-dock { position: static; margin: 0; padding: 0 14px 12px; border-radius: 0; border-top: 1px solid var(--line); }
+  .cv-stage > .wt-dock .wt-bar { margin-top: 0; border-top: none; }
   .wt-bar { display: flex; align-items: center; gap: 12px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   .wt-bar button { width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; font-size: 12px; line-height: 1; }
   .wt-bar button:hover { border-color: var(--act); color: var(--act); }

@@ -110,11 +110,11 @@
     var k = KINDS[kind];
     if (kind === "walk") {
       return '<div class="wt" data-wt="' + esc(key) + '" tabindex="0" role="group" aria-label="' + esc(spec.title || key) + '">' +
-             '<div class="wt-stage"></div><div class="wt-bar">' +
+             '<div class="wt-stage"></div><div class="wt-dock"><div class="wt-bar">' +
              '<button class="wt-prev" type="button" aria-label="Previous step">&#9664;</button>' +
              '<input class="wt-range" type="range" min="0" max="1" value="0" aria-label="Step">' +
              '<button class="wt-next" type="button" aria-label="Next step">&#9654;</button>' +
-             '<span class="wt-count"></span></div><p class="wt-note"></p></div>' +
+             '<span class="wt-count"></span></div><p class="wt-note"></p></div></div>' +
              '<div class="tblock" style="border-top:none; margin-top:8px"><div class="nm">' + esc(key) + "</div></div>";
     }
     if (kind === "tour") { return '<div class="tour-mount" data-ex="' + esc(key) + '"></div>'; }
