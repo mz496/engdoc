@@ -10,6 +10,7 @@
     erd: { mount: "erd-mount", pre: "data-erdspec" },
     tbl: { mount: "table-mount", pre: "data-tblspec" },
     cg: { mount: "cg-mount", pre: "data-cgspec" },
+    box: { mount: "box-mount", pre: "data-boxspec" },
     screen: { mount: "screen-mount", pre: "data-screenspec" },
     tour: { mount: "tour-mount", pre: null },
     walk: { mount: null, pre: null }
@@ -268,6 +269,10 @@
   function paint(result) {
     var y = window.scrollY;
     root.innerHTML = result.html;
+    // innerHTML never runs a script, so an html fence's own script (a notes toggle, say) is re-created to run.
+    root.querySelectorAll("script").forEach(function (old) {
+      var live = document.createElement("script"); live.textContent = old.textContent; old.replaceWith(live);
+    });
     try { window.EngDoc.mount(root); } catch (e) { console.error("engdoc mount", e); }
     document.title = result.title || "engdoc";
     window.EngDoc.rebuildToc();
@@ -288,7 +293,7 @@
   var inline = document.getElementById("doc-source");
   if (inline) {
     var ip = inline.getAttribute("data-path") || "doc.md";
-    paint(renderSource(ip, inline.textContent, inline.getAttribute("data-stamp") || ""));
+    paint(renderSource(ip, inline.textContent.replace(/<\\\/script/gi, "</script"), inline.getAttribute("data-stamp") || ""));
     return;
   }
 

@@ -1553,6 +1553,307 @@
 
   var CALLGRAPHS = {};
 
+  /* ---------- architecture graph ---------- */
+
+  /* Boxes inside boxes, joined by arrows. A node with children is a grouping: long-dashed, titled above
+     its top-left corner, and a place rather than a thing, so no arrow may start or end on it. A node
+     with fog is a placeholder leaf, short-dashed like a call graph's fog node. Anything else is a
+     component: a solid box with its label inside. Groupings nest to any depth; the leaves are always
+     components or fog. */
+  var BX = { padX: 12, padY: 10, lineH: 15, minW: 64, eyeW: 18, rx: 6, pad: 16, titleH: 20, gap: 22, rank: 72,
+             rootGap: 40, rootRank: 110, margin: 30, errH: 15 };
+
+  function bxLines(label) {
+    return String(label == null ? "" : label).replace(/\s+$/, "").split(/\n/).map(function (l) { return l.replace(/\s+$/, ""); });
+  }
+
+  function bxNormalize(spec) {
+    var byId = {}, roots = [], leaves = [], errors = [];
+    function walk(n, parent, depth) {
+      if (!n || n.id === undefined) { errors.push("a node has no id"); return null; }
+      var id = String(n.id);
+      if (byId[id]) { errors.push("duplicate node id " + id); return null; }
+      var it = { n: n, id: id, parent: parent, depth: depth, kids: [], group: false, fog: null };
+      byId[id] = it;
+      if (n.children && n.children.length) {
+        it.group = true;
+        n.children.forEach(function (c) { var k = walk(c, it, depth + 1); if (k) { it.kids.push(k); } });
+      } else {
+        if (n.fog) { it.fog = cgFogLines(n.fog); }
+        leaves.push(it);
+      }
+      return it;
+    }
+    (spec.nodes || []).forEach(function (n) { var it = walk(n, null, 0); if (it) { roots.push(it); } });
+    /* The diff layer: node ids and from~to edge keys under add, mod and del. A grouping's mark reaches
+       everything inside it, since adding a layer adds what it holds. An arrow is marked only by name:
+       two new boxes joined by an old arrow is a real state, and inheriting would paint over it. */
+    var marks = {};
+    ["add", "mod", "del"].forEach(function (kind) { ((spec.diff || {})[kind] || []).forEach(function (k) { marks[String(k)] = kind; }); });
+    var stamp = function (it, inherited) { it.d = marks[it.id] || inherited || ""; it.kids.forEach(function (k) { stamp(k, it.d); }); };
+    roots.forEach(function (r) { stamp(r, ""); });
+    var edges = [];
+    (spec.edges || []).forEach(function (e) {
+      var a = byId[String(e.from)], b = byId[String(e.to)];
+      if (!a || !b) { errors.push("edge " + e.from + " -> " + e.to + " names a node that is not in the spec"); return; }
+      if (a.group || b.group) { errors.push("edge " + e.from + " -> " + e.to + " touches a grouping; arrows join leaves only"); return; }
+      if (a === b) { errors.push("edge " + e.from + " -> " + e.to + " points at itself"); return; }
+      var k = a.id + "~" + b.id;
+      edges.push({ e: e, a: a, b: b, k: k, d: marks[k] || "" });
+    });
+    Object.keys(marks).forEach(function (k) {
+      if (byId[k] || edges.some(function (ed) { return ed.k === k; })) { return; }
+      errors.push("diff marks " + k + ", which is not a node or an arrow in the spec");
+    });
+    return { byId: byId, roots: roots, leaves: leaves, edges: edges, errors: errors };
+  }
+
+  function bxLeafSize(it) {
+    if (it.fog) { return cgFogSize(it.fog); }
+    var lines = bxLines(it.n.label || it.id), w = 0;
+    lines.forEach(function (l) { w = Math.max(w, textW(l, 11, true)); });
+    return { w: Math.max(BX.minW, Math.ceil(w + 2 * BX.padX + BX.eyeW)), h: Math.ceil(lines.length * BX.lineH + 2 * BX.padY), lines: lines };
+  }
+
+  /* The child of `group` that contains `it`, or null when `it` lies outside it. With group null it is
+     the root box containing `it`. This is how a leaf-to-leaf arrow becomes an edge between two
+     siblings at any level of the tree. */
+  function bxKidOf(it, group) {
+    var cur = it;
+    while (cur && cur.parent !== group) { cur = cur.parent; }
+    return cur;
+  }
+
+  /* One level of the tree at a time: the children of one grouping (or the roots) are laid out as
+     plain nodes whose sizes are already known, with every arrow that crosses between two of them
+     lifted to an edge between those two. A grouping is then just a node to its own parent. This keeps
+     sibling groupings in clean columns, which dagre's compound mode does not, since it ranks by leaf
+     and lets one grouping's children interleave with another's. */
+  function bxLayoutLevel(kids, group, N, spec) {
+    var isRoot = !group, flow = (group ? group.n.flow : spec.flow) || "right";
+    var left = isRoot ? BX.margin : BX.pad, top = isRoot ? BX.margin : BX.pad + BX.titleH;
+    var padR = isRoot ? BX.margin : BX.pad, w = 0, h = 0;
+    /* Free placement wins over the solver: this is what a dragged layout serializes to. A child's
+       x/y is relative to its grouping's top-left corner, title band included. */
+    if (kids.some(function (k) { return k.n.x !== undefined || k.n.y !== undefined; })) {
+      kids.forEach(function (k) { k.x = k.n.x || 0; k.y = k.n.y || 0; w = Math.max(w, k.x + k.s.w); h = Math.max(h, k.y + k.s.h); });
+      return { w: w + padR, h: h + padR };
+    }
+    if (typeof ErdAuto === "undefined") {
+      var x = left, y = top;
+      kids.forEach(function (k) { k.x = x; k.y = y; w = Math.max(w, x + k.s.w); h = Math.max(h, y + k.s.h); x += k.s.w + BX.gap; y += k.s.h + BX.gap; });
+      return { w: w + padR, h: h + padR };
+    }
+    var g = new ErdAuto.Graph({ directed: true });
+    g.setGraph({ rankdir: flow === "down" ? "TB" : "LR", nodesep: isRoot ? BX.rootGap : BX.gap,
+                 ranksep: isRoot ? BX.rootRank : BX.rank, marginx: 0, marginy: 0 });
+    g.setDefaultEdgeLabel(function () { return {}; });
+    kids.forEach(function (k) { g.setNode(k.id, { width: k.s.w, height: k.s.h }); });
+    var seen = {};
+    N.edges.forEach(function (ed) {
+      var a = bxKidOf(ed.a, group), b = bxKidOf(ed.b, group);
+      if (!a || !b || a === b || seen[a.id + ">" + b.id]) { return; }
+      seen[a.id + ">" + b.id] = 1;
+      g.setEdge(a.id, b.id);
+    });
+    ErdAuto.layout(g);
+    kids.forEach(function (k) {
+      var n = g.node(k.id);
+      k.x = Math.round(left + n.x - k.s.w / 2);
+      k.y = Math.round(top + n.y - k.s.h / 2);
+    });
+    return { w: Math.ceil(left + g.graph().width + padR), h: Math.ceil(top + g.graph().height + padR) };
+  }
+
+  function bxSize(it, N, spec) {
+    if (!it.group) { it.s = bxLeafSize(it); return; }
+    it.kids.forEach(function (k) { bxSize(k, N, spec); });
+    var box = bxLayoutLevel(it.kids, it, N, spec), title = String(it.n.label || it.id);
+    var minW = Math.ceil(textW(title, 11.5, true) + 2 * BX.padX + 30);
+    it.s = { w: Math.max(box.w, minW), h: box.h, title: title };
+  }
+
+  function layoutBox(spec) {
+    var N = bxNormalize(spec);
+    N.roots.forEach(function (r) { bxSize(r, N, spec); });
+    var box = bxLayoutLevel(N.roots, null, N, spec), canvas = spec.canvas || [];
+    N.w = Math.ceil(canvas[0] || box.w);
+    N.h = Math.ceil(canvas[1] || box.h);
+    var abs = function (it, ox, oy) { it.ax = ox + it.x; it.ay = oy + it.y; it.kids.forEach(function (k) { abs(k, it.ax, it.ay); }); };
+    N.roots.forEach(function (r) { abs(r, 0, 0); });
+    return N;
+  }
+
+  function bxNode(it) {
+    var s = it.s, cls = (it.group ? "bx-group" : it.fog ? "bx-fog" : "bx-leaf") + (it.d ? " " + it.d : "");
+    var out = '<g class="cv-box ' + cls + '" data-node="' + esc(it.id) + '" data-k="' + esc(it.id) + '" data-w="' + s.w + '" data-h="' + s.h + '"' +
+              (it.group ? ' data-top="' + BX.titleH + '"' : "") + ' transform="translate(' + it.x + "," + it.y + ')">';
+    if (it.group) {
+      /* The plate takes pointer events although it has no fill, so the padding around the children is
+         a hover and drag target for the grouping itself. Children draw on top of it, then the chrome. */
+      out += '<rect class="bx-groupplate" x="0" y="' + BX.titleH + '" width="' + s.w + '" height="' + (s.h - BX.titleH) + '" rx="8"/>';
+      out += '<text class="bx-title" x="0" y="' + (BX.titleH - 6) + '">' + esc(s.title) + "</text>";
+      it.kids.forEach(function (k) { out += bxNode(k); });
+      out += cvChrome(s.title, s.w, s.h, 8, { x: s.w - 11, y: BX.titleH / 2 - 1 }, BX.titleH);
+    } else if (it.fog) {
+      out += '<rect class="cg-fogplate" x="0" y="0" width="' + s.w + '" height="' + s.h + '" rx="7"/>';
+      it.fog.forEach(function (line, i) {
+        out += '<text class="cg-fogtext" x="' + (s.w / 2) + '" y="' + (CG_FOG.padY + 11 + i * CG_FOG.lineH) + '" text-anchor="middle">' + esc(line) + "</text>";
+      });
+    } else {
+      out += '<rect class="bx-plate" x="0" y="0" width="' + s.w + '" height="' + s.h + '" rx="' + BX.rx + '"/>';
+      s.lines.forEach(function (l, i) {
+        out += '<text class="bx-label" x="' + (s.w / 2) + '" y="' + (BX.padY + 11 + i * BX.lineH) + '" text-anchor="middle">' + esc(l) + "</text>";
+      });
+      out += cvChrome(s.lines, s.w, s.h, BX.rx, { x: s.w - 10, y: 9 });
+    }
+    return out + "</g>";
+  }
+
+  /* An arrow leaves the side of its source that faces the target and enters the facing side of the
+     target, so a downward arrow drops out of the bottom instead of looping round from the right. The
+     curve is a cubic whose handles stand off those two sides. */
+  var BX_HEAD = { r: "M0,0 L-8,-4 L-8,4 Z", l: "M0,0 L8,-4 L8,4 Z", d: "M0,0 L-4,-8 L4,-8 Z", u: "M0,0 L-4,8 L4,8 Z" };
+
+  function bxEdgeGeom(A, B) {
+    var acx = A.x + A.w / 2, acy = A.y + A.h / 2, bcx = B.x + B.w / 2, bcy = B.y + B.h / 2;
+    var dx = bcx - acx, dy = bcy - acy, g, k, sgn;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      sgn = dx >= 0 ? 1 : -1;
+      g = sgn > 0 ? { x0: A.x + A.w, y0: acy, x1: B.x, y1: bcy, side: "r" } : { x0: A.x, y0: acy, x1: B.x + B.w, y1: bcy, side: "l" };
+      k = Math.max(28, Math.abs(g.x1 - g.x0) * 0.5);
+      g.c1x = g.x0 + sgn * k; g.c1y = g.y0; g.c2x = g.x1 - sgn * k; g.c2y = g.y1;
+    } else {
+      sgn = dy >= 0 ? 1 : -1;
+      g = sgn > 0 ? { x0: acx, y0: A.y + A.h, x1: bcx, y1: B.y, side: "d" } : { x0: acx, y0: A.y, x1: bcx, y1: B.y + B.h, side: "u" };
+      k = Math.max(28, Math.abs(g.y1 - g.y0) * 0.5);
+      g.c1x = g.x0; g.c1y = g.y0 + sgn * k; g.c2x = g.x1; g.c2y = g.y1 - sgn * k;
+    }
+    var r = function (v) { return Math.round(v * 10) / 10; };
+    g.d = "M" + r(g.x0) + "," + r(g.y0) + " C" + r(g.c1x) + "," + r(g.c1y) + " " + r(g.c2x) + "," + r(g.c2y) + " " + r(g.x1) + "," + r(g.y1);
+    g.mx = r((g.x0 + 3 * g.c1x + 3 * g.c2x + g.x1) / 8);
+    g.my = r((g.y0 + 3 * g.c1y + 3 * g.c2y + g.y1) / 8);
+    return g;
+  }
+
+  function bxEdgeInner(g, label) {
+    var out = '<path class="bx-line" d="' + g.d + '"/>';
+    out += '<circle class="bx-tail" cx="' + g.x0 + '" cy="' + g.y0 + '" r="2.4"/>';
+    out += '<path class="bx-head" transform="translate(' + g.x1 + "," + g.y1 + ')" d="' + BX_HEAD[g.side] + '"/>';
+    if (label) {
+      /* On the curve's midpoint: above it on a sideways arrow, beside it on a vertical one. The halo
+         is the surface colour so the word stays legible where arrows cross. */
+      var vert = g.side === "d" || g.side === "u";
+      out += '<text class="bx-elbl" x="' + (vert ? g.mx + 8 : g.mx) + '" y="' + (vert ? g.my + 4 : g.my - 6) + '"' +
+             (vert ? "" : ' text-anchor="middle"') + ">" + esc(label) + "</text>";
+    }
+    return out;
+  }
+
+  function bxRect(it) { return { x: it.ax, y: it.ay, w: it.s.w, h: it.s.h }; }
+
+  function renderBox(spec, uid) {
+    var N = layoutBox(spec), out = "";
+    var h = N.h + N.errors.length * BX.errH;
+    N.roots.forEach(function (r) { out += bxNode(r); });
+    out += '<g class="bx-edges">';
+    N.edges.forEach(function (ed) {
+      var g = bxEdgeGeom(bxRect(ed.a), bxRect(ed.b));
+      out += '<g class="bx-edge cv-edge' + (ed.d ? " " + ed.d : "") + '" data-k="' + esc(ed.k) + '" data-from="' + esc(ed.a.id) + '" data-to="' + esc(ed.b.id) +
+             '" data-label="' + esc(ed.e.label || "") + '">' + bxEdgeInner(g, ed.e.label) + "</g>";
+    });
+    out += "</g>";
+    /* A bad spec draws what it can and says what it dropped, on the canvas where the author is looking. */
+    N.errors.forEach(function (msg, i) {
+      if (typeof console !== "undefined") { console.warn("architecture graph: " + msg); }
+      out += '<text class="bx-err" x="' + BX.margin + '" y="' + (N.h + (i + 1) * BX.errH - 4) + '">' + esc(msg) + "</text>";
+    });
+    return '<svg class="bx cv" data-canvas="box" viewBox="0 0 ' + N.w + " " + h + '" role="img" aria-label="' +
+           esc(spec.alt || "architecture graph") + '" style="width:' + N.w + 'px; height:auto; display:block">' + out + "</svg>";
+  }
+
+  var BOXES = {};
+
+  /* A box's transform is relative to its grouping, so its place on the canvas is the sum of every
+     transform up to the svg. */
+  function bxAbs(g) {
+    var x = 0, y = 0, cur = g;
+    while (cur && cur.classList && cur.classList.contains("cv-box")) {
+      var p = cvPos(cur);
+      x += p.x; y += p.y;
+      cur = cur.parentNode;
+    }
+    return { x: x, y: y };
+  }
+
+  function bxRedraw(svg) {
+    var rects = {};
+    svg.querySelectorAll(".cv-box").forEach(function (g) {
+      var p = bxAbs(g);
+      rects[g.getAttribute("data-node")] = { x: p.x, y: p.y, w: +g.getAttribute("data-w") || 0, h: +g.getAttribute("data-h") || 0 };
+    });
+    svg.querySelectorAll(".bx-edge").forEach(function (e) {
+      var a = rects[e.getAttribute("data-from")], b = rects[e.getAttribute("data-to")];
+      if (!a || !b) { return; }
+      e.innerHTML = bxEdgeInner(bxEdgeGeom(a, b), e.getAttribute("data-label"));
+    });
+  }
+
+  /* Hovering a box lights every arrow into or out of it, one hop each way, and the boxes at the other
+     ends. A grouping counts every leaf inside it, at any depth, which falls out of asking whether the
+     arrow's end is a descendant of the hovered element. */
+  function bxLight(svg, box) {
+    var live = {};
+    svg.querySelectorAll(".bx-edge").forEach(function (e) {
+      var fa = svg.querySelector('.cv-box[data-node="' + e.getAttribute("data-from") + '"]');
+      var ta = svg.querySelector('.cv-box[data-node="' + e.getAttribute("data-to") + '"]');
+      var hit = !!((fa && box.contains(fa)) || (ta && box.contains(ta)));
+      e.classList.toggle("on", hit);
+      if (hit) { live[e.getAttribute("data-from")] = 1; live[e.getAttribute("data-to")] = 1; }
+    });
+    svg.querySelectorAll(".bx-leaf, .bx-fog").forEach(function (g) { g.classList.toggle("on", !!live[g.getAttribute("data-node")]); });
+    box.classList.add("seed");
+    svg.classList.add("lit");
+  }
+
+  function bxClear(svg) {
+    if (!svg) { return; }
+    svg.classList.remove("lit");
+    svg.querySelectorAll(".on, .seed").forEach(function (el) { el.classList.remove("on"); el.classList.remove("seed"); });
+  }
+
+  function bxSpecWithLayout(svg, key) {
+    var base = BOXES[key];
+    if (!base) { return null; }
+    var at = {};
+    svg.querySelectorAll(".cv-box").forEach(function (g) { at[g.getAttribute("data-node")] = cvPos(g); });
+    var vb = svg.viewBox.baseVal;
+    var copyNode = function (n) {
+      var c = {};
+      Object.keys(n).forEach(function (k) { if (k !== "children" && k !== "x" && k !== "y") { c[k] = n[k]; } });
+      var p = at[String(n.id)];
+      if (p) { c.x = p.x; c.y = p.y; }
+      if (n.children) { c.children = n.children.map(copyNode); }
+      return c;
+    };
+    var out = { alt: base.alt, canvas: [Math.round(vb.width), Math.round(vb.height)] };
+    if (base.flow) { out.flow = base.flow; }
+    if (base.diff) { out.diff = base.diff; }
+    out.nodes = (base.nodes || []).map(copyNode);
+    out.edges = base.edges;
+    return out;
+  }
+
+  function bxSyncSpec(svg) {
+    var card = svg.closest ? svg.closest(".figcard") : null;
+    if (!card) { return; }
+    var mount = card.querySelector(".box-mount"), pre = card.querySelector("pre[data-boxspec]");
+    if (!mount || !pre) { return; }
+    var spec = bxSpecWithLayout(svg, mount.getAttribute("data-ex"));
+    if (spec) { pre.textContent = specText(spec); }
+  }
+
+
   function renderScreens(spec, uid, key) {
     var L = scLayout(spec), out = "";
     var hatch = function (id, c) {
@@ -1787,7 +2088,8 @@
     erd: function (k, uid) { return renderErd(ERDS[k], uid, k); },
     screen: function (k, uid) { return renderScreens(SCREENS[k], uid, k); },
     tbl: function (k, uid, extra) { return renderTableFrozen(TABLES[k], uid, extra); },
-    cg: function (k, uid) { return renderCallGraph(CALLGRAPHS[k], uid); }
+    cg: function (k, uid) { return renderCallGraph(CALLGRAPHS[k], uid); },
+    box: function (k, uid) { return renderBox(BOXES[k], uid); }
   };
 
   function wtPanels(spec) {
@@ -2133,6 +2435,8 @@
     q("pre[data-tblspec]").forEach(function (el) { el.textContent = specText(TABLES[el.getAttribute("data-tblspec")]); });
     q(".cg-mount").forEach(function (el) { var key = el.getAttribute("data-ex"); if (CALLGRAPHS[key]) { el.innerHTML = renderCallGraph(CALLGRAPHS[key], "cg-" + safeId(key)); } });
     q("pre[data-cgspec]").forEach(function (el) { el.textContent = specText(CALLGRAPHS[el.getAttribute("data-cgspec")]); });
+    q(".box-mount").forEach(function (el) { var key = el.getAttribute("data-ex"); if (BOXES[key]) { el.innerHTML = renderBox(BOXES[key], "bx-" + safeId(key)); } });
+    q("pre[data-boxspec]").forEach(function (el) { el.textContent = specText(BOXES[el.getAttribute("data-boxspec")]); });
     q(".tour-mount").forEach(function (el) { el.innerHTML = renderTour(TOURS[el.getAttribute("data-ex")] || {}); });
     q(".screen-mount").forEach(function (el) { var key = el.getAttribute("data-ex"); if (SCREENS[key]) { el.innerHTML = renderScreens(SCREENS[key], "sc-" + safeId(key), key); } });
     q("pre[data-screenspec]").forEach(function (el) { el.textContent = specText(SCREENS[el.getAttribute("data-screenspec")]); });
@@ -2224,13 +2528,25 @@
   /* eye, when given, moves the control off its default spot in the box's top right corner. A box whose
      top edge is a real UI element, like a screen's topbar, puts the eye above the frame instead so it
      cannot be read as a button in the mockup. */
-  function cvChrome(name, w, h, rx, eye) {
-    var veilSize = Math.max(10, Math.min(17, Math.floor((w - 26) / (String(name).length * 0.605))));
-    var ex = eye ? eye.x : w - 18, ey = eye ? eye.y : 13;
+  /* top, when given, is where the veil starts: a box whose title sits above its plate, like an
+     architecture grouping, veils the plate and leaves the title readable. */
+  /* name may be an array of lines: a box whose label already breaks across lines keeps those breaks on
+     its veil, sized to the longest line, rather than running one long line past its edges. */
+  function cvChrome(name, w, h, rx, eye, top) {
+    var lines = Array.isArray(name) ? name : [String(name)], longest = 1;
+    lines.forEach(function (l) { longest = Math.max(longest, String(l).length); });
+    var veilSize = Math.max(10, Math.min(17, Math.floor((w - 26) / (longest * 0.605))));
+    var ex = eye ? eye.x : w - 18, ey = eye ? eye.y : 13, vy = top || 0;
+    var lineH = veilSize * 1.25, y0 = (vy + h) / 2 + veilSize / 3 - (lines.length - 1) * lineH / 2;
+    var text = "";
+    lines.forEach(function (l, i) {
+      text += '<text class="cv-veiltext" x="' + (w / 2) + '" y="' + (y0 + i * lineH) +
+              '" text-anchor="middle" style="font-size:' + veilSize + 'px">' + esc(l) + "</text>";
+    });
+    name = lines.join(" ");
     return '<g class="cv-veil">' +
-           '<rect class="cv-veilplate" x="1" y="1" width="' + (w - 2) + '" height="' + (h - 2) + '" rx="' + (rx || 7) + '"/>' +
-           '<text class="cv-veiltext" x="' + (w / 2) + '" y="' + (h / 2 + veilSize / 3) +
-           '" text-anchor="middle" style="font-size:' + veilSize + 'px">' + esc(name) + "</text></g>" +
+           '<rect class="cv-veilplate" x="1" y="' + (vy + 1) + '" width="' + (w - 2) + '" height="' + (h - vy - 2) + '" rx="' + (rx || 7) + '"/>' +
+           text + "</g>" +
            '<g class="cv-eye" role="button" tabindex="0" aria-pressed="false" aria-label="' +
            esc("Show or hide " + name) + '" transform="translate(' + ex + "," + ey + ')">' +
            '<rect class="cv-eyehit" x="-11" y="-9" width="22" height="18" rx="4"/>' +
@@ -2311,12 +2627,13 @@
      nothing is persisted, so a reload is a clean graph. Which arrows to quiet cannot be expressed as
      a selector, since it depends on the other end of each edge, so it is recomputed on every toggle. */
   function cvApplyHidden(svg) {
-    var hidden = {};
-    svg.querySelectorAll(".cv-box").forEach(function (g) {
-      if (g.classList.contains("hidden")) { hidden[g.getAttribute("data-node")] = 1; }
-    });
+    var boxOf = {};
+    svg.querySelectorAll(".cv-box").forEach(function (g) { boxOf[g.getAttribute("data-node")] = g; });
+    /* Hidden is inherited: a box inside a hidden grouping is under the veil too, so its arrows quiet
+       with it. Walking the DOM up from the box is what makes the rule recursive at any depth. */
+    var under = function (id) { var g = boxOf[id]; return !!(g && g.closest(".cv-box.hidden")); };
     svg.querySelectorAll(".cv-edge").forEach(function (e) {
-      e.classList.toggle("faded", !!(hidden[e.getAttribute("data-from")] || hidden[e.getAttribute("data-to")]));
+      e.classList.toggle("faded", under(e.getAttribute("data-from")) || under(e.getAttribute("data-to")));
     });
   }
 
@@ -2508,6 +2825,19 @@
 
   var erdHover = null;
 
+  var bxHover = null;
+
+  document.addEventListener("mouseover", function (e) {
+    if (cvDrag || cvPan) { return; }
+    var t = e.target && e.target.closest ? e.target.closest(".cv-box") : null;
+    if (t && !(t.ownerSVGElement && t.ownerSVGElement.classList.contains("bx"))) { t = null; }
+    if (t && t.closest(".wt-stage")) { t = null; }
+    if (t === bxHover) { return; }
+    if (bxHover) { bxClear(bxHover.ownerSVGElement); }
+    bxHover = t;
+    if (t) { bxLight(t.ownerSVGElement, t); }
+  });
+
   document.addEventListener("mouseover", function (e) {
     if (cvDrag || cvPan) { return; }
     var t = e.target && e.target.closest ? e.target.closest(".erd-col, .erd-head") : null;
@@ -2542,7 +2872,8 @@
         cvPan = { x: e.clientX, y: e.clientY, left: pane.scrollLeft, top: pane.scrollTop, pane: pane };
         pane.classList.add("panning");
         if (cgHover) { cgClear(cgHover.ownerSVGElement); cgHover = null; }
-    if (erdHover) { erdClear(erdHover.ownerSVGElement); erdHover = null; }
+        if (erdHover) { erdClear(erdHover.ownerSVGElement); erdHover = null; }
+        if (bxHover) { bxClear(bxHover.ownerSVGElement); bxHover = null; }
         e.preventDefault();
       }
       return;
@@ -2554,6 +2885,7 @@
     hideJsonTip();
     if (cgHover) { cgClear(cgHover.ownerSVGElement); cgHover = null; }
     if (erdHover) { erdClear(erdHover.ownerSVGElement); erdHover = null; }
+    if (bxHover) { bxClear(bxHover.ownerSVGElement); bxHover = null; }
     box.classList.add("dragging");
     e.preventDefault();
   });
@@ -2571,8 +2903,19 @@
        cut in half rather than scrolled to. */
     var vb = cvDrag.svg.viewBox.baseVal;
     var w = +cvDrag.box.getAttribute("data-w") || 0, h = +cvDrag.box.getAttribute("data-h") || 0;
-    var x = Math.max(vb.x, Math.min(pt.x - cvDrag.dx, vb.x + vb.width - w));
-    var y = Math.max(vb.y, Math.min(pt.y - cvDrag.dy, vb.y + vb.height - h));
+    var par = cvDrag.box.parentNode;
+    par = par && par.classList && par.classList.contains("cv-box") ? par : null;
+    var x, y;
+    if (par) {
+      /* Inside a grouping the transform is relative to the parent, so the clamp is the parent's
+         plate: below its title band, inside its width. */
+      var pw = +par.getAttribute("data-w") || 0, ph = +par.getAttribute("data-h") || 0, ptop = +par.getAttribute("data-top") || 0;
+      x = Math.max(0, Math.min(pt.x - cvDrag.dx, pw - w));
+      y = Math.max(ptop, Math.min(pt.y - cvDrag.dy, ph - h));
+    } else {
+      x = Math.max(vb.x, Math.min(pt.x - cvDrag.dx, vb.x + vb.width - w));
+      y = Math.max(vb.y, Math.min(pt.y - cvDrag.dy, vb.y + vb.height - h));
+    }
     cvDrag.box.setAttribute("transform", "translate(" + Math.round(x) + "," + Math.round(y) + ")");
     var mover = CANVAS[cvDrag.svg.getAttribute("data-canvas")];
     if (mover && mover.move) { mover.move(cvDrag.svg, cvDrag.box); }
@@ -2602,6 +2945,7 @@
   CANVAS.cg = { move: function (svg) { cgRedraw(svg); }, drop: function (svg) { cgSyncSpec(svg); } };
   CANVAS.erd = { move: function (svg) { erdRedraw(svg); }, drop: function (svg) { erdSyncSpec(svg); } };
   CANVAS.screen = { move: function (svg) { scRedraw(svg); }, drop: function (svg) { scSyncSpec(svg); } };
+  CANVAS.box = { move: function (svg) { bxRedraw(svg); }, drop: function (svg) { bxSyncSpec(svg); } };
 
   function cgSyncSpec(svg) {
     var card = svg.closest ? svg.closest(".figcard") : null;
@@ -2714,7 +3058,7 @@
   buildToc();
 
   window.EngDoc = {
-    registries: { seq: SPECS, flow: FLOWS, erd: ERDS, tbl: TABLES, walk: WALKS, screen: SCREENS, cg: CALLGRAPHS, tour: TOURS },
+    registries: { seq: SPECS, flow: FLOWS, erd: ERDS, tbl: TABLES, walk: WALKS, screen: SCREENS, cg: CALLGRAPHS, box: BOXES, tour: TOURS },
     mount: mountAll,
     specText: specText,
     rebuildToc: buildToc
