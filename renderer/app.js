@@ -299,18 +299,23 @@
 
   var current = { path: null, index: false };
 
+  /* Documents live in docs/. The figure examples live in lib/, so a wiki link to one still resolves. */
+  var ROOTS = ["docs/", "lib/"];
+
   function fetchFirst(paths) {
     if (!paths.length) { return Promise.reject(new Error("not found")); }
-    return fetch("/docs/" + paths[0], { cache: "no-store" }).then(function (r) {
+    return fetch("/" + paths[0], { cache: "no-store" }).then(function (r) {
       if (r.ok) { return r.text().then(function (t) { return { path: paths[0], text: t, res: r }; }); }
       return fetchFirst(paths.slice(1));
     });
   }
 
   function loadDoc(rel) {
-    var candidates = /\.(md|ya?ml)$/.test(rel) ? [rel] : [rel + ".md", rel + ".yaml", rel + ".yml"];
+    var names = /\.(md|ya?ml)$/.test(rel) ? [rel] : [rel + ".md", rel + ".yaml", rel + ".yml"];
+    var candidates = [];
+    ROOTS.forEach(function (r) { names.forEach(function (n) { candidates.push(r + n); }); });
     fetchFirst(candidates).then(function (got) {
-      current = { path: got.path, index: false };
+      current = { path: got.path, rel: rel, index: false };
       paint(renderSource(got.path, got.text, stampFrom(got.res)));
     }).catch(function () {
       root.innerHTML = '<div class="doc-errors">' + esc("no document at docs/" + rel + " (.md or .yaml)") + '</div><p class="support"><a href="/">back to the directory</a></p>';
@@ -328,7 +333,7 @@
   }
 
   function route() {
-    var rel = decodeURIComponent(location.pathname.replace(/^\/+/, "")).replace(/^docs\//, "");
+    var rel = decodeURIComponent(location.pathname.replace(/^\/+/, "")).replace(/^(docs|lib)\//, "");
     if (!rel) { loadIndex(); } else { loadDoc(rel); }
   }
   route();
@@ -340,9 +345,9 @@
     es.onmessage = function (e) {
       var path = (JSON.parse(e.data || "{}").path || "");
       if (/^renderer\//.test(path)) { location.reload(); return; }
-      if (/^docs\//.test(path)) {
+      if (/^(docs|lib)\//.test(path)) {
         if (current.index) { loadIndex(); }
-        else if (current.path && path === "docs/" + current.path) { loadDoc(current.path); }
+        else if (current.path && path === current.path) { loadDoc(current.rel); }
       }
     };
   }

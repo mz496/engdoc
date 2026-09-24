@@ -22,7 +22,7 @@ Plain-Markdown plans and eng docs, rendered by `renderer/`. Read this before wri
 
 ## Figures
 
-- Figures are fenced YAML, `kind slug [wide]`. Kinds and specs are in `docs/example-*.md`.
+- Figures are fenced YAML, `kind slug [wide]`. Kinds and specs are in `lib/example-*.md`.
 - Architecture graph (`box`) with a `diff` for a restructure. Flowchart (`flow`) for a decision rule. Sequence (`seq`) for a race or a protocol.
 - Build after every edit: `node scripts/build.mjs docs/<name>.md`. A figure spec error renders in red on the page, so open the built file.
 
