@@ -34,22 +34,25 @@ http.createServer((req, res) => {
     return;
   }
   if (u.pathname === "/__docs") {
-    // The directory: every document under docs/, newest edit first, with the frontmatter and title
-    // the listing needs. Read whole because the files are small and the list is the point.
+    // The directory: every document under docs/ and lib/, newest edit first, with the frontmatter and
+    // title the listing needs. Paths keep their folder. Read whole because the files are small.
     const out = [];
-    (function walk(dir) {
-      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
-        const p = path.join(dir, e.name);
-        if (e.name.startsWith(".")) continue;
-        if (e.isDirectory()) { walk(p); continue; }
-        if (!/\.(md|ya?ml)$/.test(e.name)) continue;
-        const st = fs.statSync(p), text = fs.readFileSync(p, "utf8");
-        const fm = text.match(/^---\n([\s\S]*?)\n---\n/);
-        const h1 = text.match(/^#\s+(.+)$/m);
-        out.push({ path: path.relative(path.join(ROOT, "docs"), p).split(path.sep).join("/"), mtime: st.mtime.toISOString(),
-          size: st.size, title: h1 ? h1[1].trim() : null, frontmatter: fm ? fm[1] : null });
-      }
-    })(path.join(ROOT, "docs"));
+    for (const top of ["docs", "lib"]) {
+      if (!fs.existsSync(path.join(ROOT, top))) continue;
+      (function walk(dir) {
+        for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+          const p = path.join(dir, e.name);
+          if (e.name.startsWith(".")) continue;
+          if (e.isDirectory()) { walk(p); continue; }
+          if (!/\.(md|ya?ml)$/.test(e.name)) continue;
+          const st = fs.statSync(p), text = fs.readFileSync(p, "utf8");
+          const fm = text.match(/^---\n([\s\S]*?)\n---\n/);
+          const h1 = text.match(/^#\s+(.+)$/m);
+          out.push({ path: path.relative(ROOT, p).split(path.sep).join("/"), mtime: st.mtime.toISOString(),
+            size: st.size, title: h1 ? h1[1].trim() : null, frontmatter: fm ? fm[1] : null });
+        }
+      })(path.join(ROOT, top));
+    }
     out.sort((a, b) => b.mtime.localeCompare(a.mtime));
     res.writeHead(200, { "content-type": "application/json", "cache-control": "no-store" });
     res.end(JSON.stringify(out));
@@ -69,4 +72,4 @@ http.createServer((req, res) => {
   res.writeHead(200, { "content-type": MIME[path.extname(file)] || "application/octet-stream", "cache-control": "no-store",
     "last-modified": st.mtime.toUTCString() });
   fs.createReadStream(file).pipe(res);
-}).listen(PORT, () => console.log(`engdoc on http://localhost:${PORT}/  (the directory of docs/, and /<path> renders docs/<path>.md)`));
+}).listen(PORT, () => console.log(`engdoc on http://localhost:${PORT}/  (/docs and /lib list their folders, /docs/<path> renders docs/<path>.md)`));

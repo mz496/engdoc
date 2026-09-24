@@ -14,7 +14,7 @@ serve:
 
 # Open one document in the running dev server, e.g. `just open example`
 open doc:
-    open "http://localhost:{{port}}/?doc=docs/{{doc}}.md"
+    open "http://localhost:{{port}}/docs/{{doc}}"
 
 # Build one document to dist/<name>.html, e.g. `just build example`
 build doc:

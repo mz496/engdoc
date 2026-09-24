@@ -13,7 +13,7 @@ scripts/build.mjs   one self-contained HTML per document, for publishing as an a
 
 ```sh
 node scripts/serve.mjs            # http://localhost:4747/  serves docs/index.md
-open 'http://localhost:4747/?doc=docs/index.md'
+open 'http://localhost:4747/docs/index'
 ```
 
 Edit a `.md` and the page re-renders in place, keeping your scroll position. Edit anything under `renderer/` and the page reloads.

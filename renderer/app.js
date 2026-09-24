@@ -1,5 +1,5 @@
-/* The document layer. The URL is a path into docs/: "/" is the directory, newest edit first, and
-   "/plans/ingest" renders docs/plans/ingest.md (or .yaml). A document is Markdown with Obsidian style
+/* The document layer. "/" lists the folders, "/docs" and "/lib" list one folder newest edit first, and
+   "/docs/plans/ingest" renders docs/plans/ingest.md (or .yaml). A bare "/ingest" tries docs/ then lib/. A document is Markdown with Obsidian style
    frontmatter, figures as fenced YAML, and [[wiki links]] to other documents. Nothing here draws. */
 (function () {
   "use strict";
@@ -19,6 +19,9 @@
   function esc(s) {
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
+
+  /* Documents live in docs/. The figure examples live in lib/. */
+  var FOLDERS = ["docs/", "lib/"];
 
   var md = window.markdownit({ html: true, linkify: true, typographer: false });
 
@@ -242,8 +245,21 @@
     return iso.slice(0, 10);
   }
 
-  /* The directory. A view into docs/, newest edit first, one row per file. */
-  function renderIndex(list) {
+  /* The directory. The root lists the folders. A folder lists its documents, newest edit first, one row per file. */
+  function renderRoot(list) {
+    var rows = FOLDERS.map(function (f) {
+      var inside = list.filter(function (d) { return d.path.indexOf(f) === 0; });
+      var newest = inside.length ? inside[0].mtime : null;
+      return '<li class="dir-row"><a class="dir-title" href="/' + f.replace(/\/$/, "") + '">' + esc(f) + "</a>" +
+             '<span class="dir-path">' + inside.length + (inside.length === 1 ? " document" : " documents") + "</span>" +
+             '<span class="dir-chips"></span>' +
+             (newest ? '<time class="dir-time" datetime="' + esc(newest) + '" title="' + esc(newest) + '">' + esc(ago(newest)) + "</time>" : "<span></span>") + "</li>";
+    });
+    return '<header><h1>engdoc</h1><p class="meta"><span class="meta-chip date">' + FOLDERS.length + ' folders</span></p></header><ul class="dir">' + rows.join("") + "</ul>";
+  }
+
+  function renderIndex(list, folder) {
+    list = list.filter(function (d) { return d.path.indexOf(folder) === 0; });
     var rows = list.map(function (d) {
       var meta = {};
       if (d.frontmatter) { try { meta = window.jsyaml.load(d.frontmatter) || {}; } catch (e) { meta = {}; } }
@@ -254,11 +270,11 @@
       if (meta.status) { chips.push('<span class="meta-chip status">' + esc(meta.status) + "</span>"); }
       [].concat(meta.tags || []).forEach(function (t) { chips.push('<span class="meta-chip tag">#' + esc(String(t).replace(/^#/, "")) + "</span>"); });
       return '<li class="dir-row"><a class="dir-title" href="' + href + '">' + esc(title) + "</a>" +
-             '<span class="dir-path">' + esc(d.path) + "</span>" +
+             '<span class="dir-path">' + esc(d.path.slice(folder.length)) + "</span>" +
              '<span class="dir-chips">' + chips.join("") + "</span>" +
              '<time class="dir-time" datetime="' + esc(d.mtime) + '" title="' + esc(d.mtime) + '">' + esc(ago(d.mtime)) + "</time></li>";
     });
-    return "<header><h1>docs/</h1>" + '<p class="meta"><span class="meta-chip date">' + list.length + (list.length === 1 ? " document" : " documents") +
+    return "<header><h1>" + esc(folder) + "</h1>" + '<p class="meta"><a class="meta-chip" href="/">up to /</a><span class="meta-chip date">' + list.length + (list.length === 1 ? " document" : " documents") +
            ', newest edit first</span></p></header><ul class="dir">' + rows.join("") + "</ul>";
   }
 
@@ -297,10 +313,8 @@
     return;
   }
 
-  var current = { path: null, index: false };
+  var current = { path: null, index: null };
 
-  /* Documents live in docs/. The figure examples live in lib/, so a wiki link to one still resolves. */
-  var ROOTS = ["docs/", "lib/"];
 
   function fetchFirst(paths) {
     if (!paths.length) { return Promise.reject(new Error("not found")); }
@@ -312,29 +326,35 @@
 
   function loadDoc(rel) {
     var names = /\.(md|ya?ml)$/.test(rel) ? [rel] : [rel + ".md", rel + ".yaml", rel + ".yml"];
+    var folder = FOLDERS.filter(function (f) { return rel.indexOf(f) === 0; })[0];
     var candidates = [];
-    ROOTS.forEach(function (r) { names.forEach(function (n) { candidates.push(r + n); }); });
+    (folder ? [""] : FOLDERS).forEach(function (f) { names.forEach(function (n) { candidates.push(f + n); }); });
     fetchFirst(candidates).then(function (got) {
-      current = { path: got.path, rel: rel, index: false };
+      current = { path: got.path, index: null };
+      // A bare link settles on its folder's URL, so the address bar says where the file lives.
+      var canonical = "/" + got.path.replace(/\.md$/, "");
+      if (!folder && location.pathname !== canonical) { history.replaceState(null, "", canonical + location.search + location.hash); }
       paint(renderSource(got.path, got.text, stampFrom(got.res)));
     }).catch(function () {
-      root.innerHTML = '<div class="doc-errors">' + esc("no document at docs/" + rel + " (.md or .yaml)") + '</div><p class="support"><a href="/">back to the directory</a></p>';
+      root.innerHTML = '<div class="doc-errors">' + esc("no document at " + (folder ? rel : FOLDERS.join(" or ") + rel) + " (.md or .yaml)") + '</div><p class="support"><a href="/">back to the directory</a></p>';
       window.EngDoc.rebuildToc();
     });
   }
 
-  function loadIndex() {
-    current = { path: null, index: true };
+  function loadIndex(folder) {
+    current = { path: null, index: folder };
     fetch("/__docs", { cache: "no-store" }).then(function (r) { return r.json(); }).then(function (list) {
-      root.innerHTML = renderIndex(list);
-      document.title = "docs/";
+      root.innerHTML = folder ? renderIndex(list, folder) : renderRoot(list);
+      document.title = folder || "engdoc";
       window.EngDoc.rebuildToc();
     });
   }
 
   function route() {
-    var rel = decodeURIComponent(location.pathname.replace(/^\/+/, "")).replace(/^(docs|lib)\//, "");
-    if (!rel) { loadIndex(); } else { loadDoc(rel); }
+    var rel = decodeURIComponent(location.pathname.replace(/^\/+/, "")).replace(/\/+$/, "");
+    if (!rel) { loadIndex(""); return; }
+    if (FOLDERS.indexOf(rel + "/") >= 0) { loadIndex(rel + "/"); return; }
+    loadDoc(rel);
   }
   route();
 
@@ -346,8 +366,8 @@
       var path = (JSON.parse(e.data || "{}").path || "");
       if (/^renderer\//.test(path)) { location.reload(); return; }
       if (/^(docs|lib)\//.test(path)) {
-        if (current.index) { loadIndex(); }
-        else if (current.path && path === current.path) { loadDoc(current.rel); }
+        if (current.index !== null) { loadIndex(current.index); }
+        else if (path === current.path) { loadDoc(current.path); }
       }
     };
   }
