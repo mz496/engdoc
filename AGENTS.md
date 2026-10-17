@@ -1,6 +1,6 @@
 # engdoc — how to write a doc here
 
-Plain-Markdown plans and eng docs, rendered by `renderer/`. Read this before writing or editing anything under `docs/`.
+Plain-Markdown plans and eng docs. Docs go in Markdown under `docs/`; use `docs/component-examples` as example usage of how to use the different components such as the ERD diagram, sequence diagram, etc.
 
 ## Prose
 

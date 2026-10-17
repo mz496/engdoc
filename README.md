@@ -1,29 +1,44 @@
 # engdoc
 
-The eng-doc component library, split so content and renderer change independently.
+| &nbsp; | &nbsp; |
+| --- | --- |
+| asdf | asdf |
 
-```
-renderer/   lib.css, lib.js (the figure components), app.js (Markdown to page), vendor/ (dagre, Prism, markdown-it, js-yaml)
-docs/       one folder per kind of document, figures as fenced YAML
-            component-examples/  scratch/  private/ (gitignored)
-dist/       built HTML, same folders as docs/
-scripts/serve.mjs   static server with live reload, no dependencies
-scripts/build.mjs   one self-contained HTML per document, for publishing as an artifact
-```
+A toolkit to make it **easy** to be **precise** and **concise** via shared understanding with other **people**, **early** in the software development cycle.
 
-## Run
+If you have ever tried to explain to someone else a change that you spent a while iterating on, you know that this is not always straightforward, especially if it's already in the code review phase with differing context between parties (which tends to happen much more frequently in the AI era).
 
-```sh
-node scripts/serve.mjs            # http://localhost:4747/  lists the folders of docs/
-open 'http://localhost:4747/scratch/index'
-```
+## Usage
 
-Edit a `.md` and the page re-renders in place, keeping your scroll position. Edit anything under `renderer/` and the page reloads.
+`just serve`
 
-## Publish
+Then ask your agent to author a doc explaining a change or architecture using the repo and publish it under `docs/`.
 
-```sh
-node scripts/build.mjs docs/scratch/index.md    # writes dist/scratch/index.html
-```
+## Structure
 
-The output has no doctype or `<html>` wrapper, which is what the artifact host expects. Publish it with the Artifact tool, passing the existing URL to update in place.
+**Substrate:**
+  - The inputs are Markdown docs with DSLs defined in codeblocks for special components, intended for agents to write.
+  - Webpages rendering the Markdown, hosted locally.
+  - Still developing the workflows (i.e. skills) in AGENTS.md.
+
+**Low-level components:**
+| Type | Example |
+| --- | --- |
+| Tabular data | asdf |
+| Walkthroughs: light up any combination of elements in sequence | asdf |
+| Canvases: fullscreenable, with connectable, draggable, hideable boxes | asdf |
+
+**Higher-level components:**
+| Type | Example|
+| --- | --- |
+| Sequence diagrams | asdf |
+| Entity Relationship Diagrams | asdf |
+| Architecture and call graphs: showing dependencies between components | asdf |
+| Code diff tours | asdf |
+| Flowcharts | asdf |
+
+
+## Inspirations
+
+- *The Dream Machine: J.C.R. Licklider and the Revolution That Made Computing Personal* by M. Mitchell Waldrop, 2001.
+- https://github.com/cathrynlavery/diagram-design
