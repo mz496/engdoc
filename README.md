@@ -2,7 +2,7 @@
 
 ![Hero image](assets/architecture-diagram.png)
 
-A toolkit to make it **easy** to be **precise** and **concise** via shared understanding with other **people**, **early** in the building process.
+A toolkit to make it **easy** to build **precise** and **concise** shared understanding with other **people**, **early** in the building process.
 
 If you have ever tried to explain to someone else a change that you spent a while iterating on, you know that this is not always straightforward. This is especially the case if the change is already in the code review phase with differing context between parties, which tends to happen much more frequently in the AI era.
 
