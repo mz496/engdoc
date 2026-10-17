@@ -1,5 +1,5 @@
-/* The document layer. "/" lists the folders, "/docs" and "/lib" list one folder newest edit first, and
-   "/docs/plans/ingest" renders docs/plans/ingest.md (or .yaml). A bare "/ingest" tries docs/ then lib/. A document is Markdown with Obsidian style
+/* The document layer. "/" lists the folders, "/scratch" lists one folder newest edit first, and
+   "/scratch/plans/ingest" renders docs/scratch/plans/ingest.md (or .yaml). A bare "/ingest" tries each folder in turn. A document is Markdown with Obsidian style
    frontmatter, figures as fenced YAML, and [[wiki links]] to other documents. Nothing here draws. */
 (function () {
   "use strict";
@@ -20,8 +20,8 @@
     return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  /* Documents live in docs/. The figure examples live in lib/. */
-  var FOLDERS = ["docs/", "lib/"];
+  /* The folders come from the server, which lists every folder directly under docs/. */
+  var FOLDERS = [];
 
   var md = window.markdownit({ html: true, linkify: true, typographer: false });
 
@@ -318,7 +318,7 @@
 
   function fetchFirst(paths) {
     if (!paths.length) { return Promise.reject(new Error("not found")); }
-    return fetch("/" + paths[0], { cache: "no-store" }).then(function (r) {
+    return fetch("/docs/" + paths[0], { cache: "no-store" }).then(function (r) {
       if (r.ok) { return r.text().then(function (t) { return { path: paths[0], text: t, res: r }; }); }
       return fetchFirst(paths.slice(1));
     });
@@ -356,7 +356,9 @@
     if (FOLDERS.indexOf(rel + "/") >= 0) { loadIndex(rel + "/"); return; }
     loadDoc(rel);
   }
-  route();
+  fetch("/__folders", { cache: "no-store" }).then(function (r) { return r.json(); })
+    .then(function (list) { FOLDERS = list.map(function (f) { return f + "/"; }); }, function () {})
+    .then(route);
 
   /* The server says which file changed. The open document re-renders in place and keeps its scroll
      position, the directory refreshes for any document, and a renderer change reloads the page. */
@@ -365,7 +367,8 @@
     es.onmessage = function (e) {
       var path = (JSON.parse(e.data || "{}").path || "");
       if (/^renderer\//.test(path)) { location.reload(); return; }
-      if (/^(docs|lib)\//.test(path)) {
+      if (/^docs\//.test(path)) {
+        path = path.slice(5);
         if (current.index !== null) { loadIndex(current.index); }
         else if (path === current.path) { loadDoc(current.path); }
       }

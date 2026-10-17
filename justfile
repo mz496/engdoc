@@ -12,19 +12,19 @@ default:
 serve:
     PORT={{port}} node scripts/serve.mjs
 
-# Open one document in the running dev server, e.g. `just open example`
+# Open one document in the running dev server, e.g. `just open scratch/example`
 open doc:
-    open "http://localhost:{{port}}/docs/{{doc}}"
+    open "http://localhost:{{port}}/{{doc}}"
 
-# Build one document to dist/<name>.html, e.g. `just build example`
+# Build one document to dist/<folder>/<name>.html, e.g. `just build scratch/example`
 build doc:
     node scripts/build.mjs docs/{{doc}}.md
 
 # List documents and their built outputs
 ls:
-    @echo "docs/:"; ls -1 docs/*.md | sed 's|^|  |'
-    @echo "dist/:"; ls -1 dist/*.html 2>/dev/null | sed 's|^|  |' || echo "  (empty)"
+    @echo "docs/:"; ls -1 docs/*/*.md | sed 's|^|  |'
+    @echo "dist/:"; ls -1 dist/*/*.html 2>/dev/null | sed 's|^|  |' || echo "  (empty)"
 
 # Remove built HTML
 clean:
-    rm -f dist/*.html
+    find dist -name "*.html" -delete

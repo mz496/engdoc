@@ -1,13 +1,14 @@
 // One self-contained HTML per document, the shape the artifact host wants: no doctype or <html>, the
 // renderer and both vendored libraries inlined, and the Markdown carried in a script tag the app reads
-// instead of fetching. Usage: node scripts/build.mjs docs/example.md [dist/out.html]
+// instead of fetching. Usage: node scripts/build.mjs docs/scratch/example.md [dist/out.html]
+// The output mirrors docs/: docs/scratch/example.md becomes dist/scratch/example.html.
 import fs from "node:fs";
 import path from "node:path";
 import url from "node:url";
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), "..");
-const docRel = process.argv[2] || "docs/example.md";
-const outFile = process.argv[3] || path.join("dist", path.basename(docRel, ".md") + ".html");
+const docRel = process.argv[2] || "docs/component-examples/example-markdown.md";
+const outFile = process.argv[3] || path.join("dist", path.relative("docs", docRel).replace(/\.(md|ya?ml)$/, ".html"));
 const read = (p) => fs.readFileSync(path.join(ROOT, p), "utf8");
 const src = read(docRel);
 const title = (src.match(/^#\s+(.+)$/m) || [, path.basename(docRel)])[1].trim();
@@ -21,7 +22,7 @@ ${read("renderer/app.css")}
 </style>
 <nav class="toc" aria-label="Sections"><div class="toc-dashes"></div><div class="toc-panel"></div></nav>
 <main></main>
-<script type="text/markdown" id="doc-source" data-path="${docRel}" data-stamp="${stamp}">
+<script type="text/markdown" id="doc-source" data-path="${path.relative("docs", docRel)}" data-stamp="${stamp}">
 ${inlineDoc}
 </script>
 ${scripts.map((s) => `<script>\n${read(s)}\n</script>`).join("\n")}
