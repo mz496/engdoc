@@ -17,6 +17,7 @@ open doc:
     open "http://localhost:{{port}}/{{doc}}"
 
 # Build one document to dist/<folder>/<name>.html, e.g. `just build scratch/example`
+# Only used if you want to publish the html somewhere. Not used for the local dev server.
 build doc:
     node scripts/build.mjs docs/{{doc}}.md
 
