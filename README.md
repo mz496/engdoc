@@ -4,7 +4,7 @@
 
 A toolkit to make it **easy** to be **precise** and **concise** via shared understanding with other **people**, **early** in the building process.
 
-If you have ever tried to explain to someone else a change that you spent a while iterating on, you know that this is not always straightforward. This is especially the case if the change is already in a code review phase with differing context between parties, which tends to happen much more frequently in the AI era.
+If you have ever tried to explain to someone else a change that you spent a while iterating on, you know that this is not always straightforward. This is especially the case if the change is already in the code review phase with differing context between parties, which tends to happen much more frequently in the AI era.
 
 ## Usage
 
@@ -31,7 +31,7 @@ Then ask your agent to author a doc explaining a change or architecture using th
 | --- | --- |
 | Sequence diagrams | ![Sequence diagrams](assets/sequence-diagram.png) |
 | Entity Relationship Diagrams: with diff rendering | ![ERD](assets/erd.png) |
-| Architecture and call graphs: showing dependencies between components, with diff rendering | ![Architecture diagram](assets/architecture-diagram.png) |
+| Architecture and call graphs: showing dependencies between components, with diff rendering | ![Architecture diagram](assets/architecture-diagram.png) <br> ![Call graph](assets/call-graph.png) <br> ![Call graph with diff](assets/call-graph-diff.png) |
 | Code diff tours | ![Code diff](assets/code-diff.png) |
 | Flowcharts | ![Flowchart](assets/flowchart.png) |
 
