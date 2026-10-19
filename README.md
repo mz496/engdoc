@@ -10,7 +10,9 @@ If you have ever tried to explain to someone else a change that you spent a whil
 
 `just serve`
 
-Then ask your agent to author a doc explaining a change or architecture using the repo and publish it under `docs/`.
+Then ask your agent to author a doc explaining a change or architecture using the repo and publish it under `docs/`, which produces a Markdown file.
+
+Navigate to `localhost:4747` and look at the rendered doc.
 
 ## Structure
 
