@@ -9,6 +9,21 @@ order: 11
 - **An architecture graph is boxes inside boxes, joined by arrows, one level above a call graph.** A grouping is a place, a component is a thing, and an arrow only ever joins two things. Hover anything to see what it talks to, and fold a grouping away with its eye.
 - **A `box` fence is a tree of nodes and a list of edges.** A node with `children` is a grouping, a node with `fog` is a placeholder, and anything else is a component. The renderer infers the kind, lays each level out on its own, lets a dragged arrangement travel in the spec, and takes a `diff` block that colours what one change adds, removes or alters.
 
+### Use it only when real components call one another in code.
+
+- **Draw a box graph only when the boxes are things that call each other.** A screen button calls a route, a route calls a service function, a function writes a table. Every arrow is a call, a request or a write that really happens.
+- **The test is the code behind the arrow.** If you can point to the line or the request, draw it. If you cannot, say it in a sentence instead.
+- **Ideas, phases and ownership do not belong here.** A pipeline of steps, a timeline, an org chart, or "A depends on B" in the loose sense is better as prose, a flowchart or a table.
+- **Other questions have other figures.** Order in time is a sequence figure. A rule with branches is a flowchart. Functions inside one file are a call graph.
+
+### A component is a leaf with a real name. Fog is for what the figure leaves out on purpose.
+
+- **Make a component only for something that has a name in the code.** A button, a function, an API method, a table. The test is whether you could search the code for the label and find it.
+- **Use fog for anything that is not specific on purpose.** It stands in for something real that this figure chooses not to open, like "the logging loop" or "the detail screen".
+- **Fog is a choice, not a gap.** If you do not know what is there, find out before you draw it. Do not use fog to hide that.
+- **Never invent a name to fill a box.** A made-up component claims a precision the code does not have, and a reader will go looking for it. Fog is honest about being vague.
+- **Keep fog to one short line.** Say what it is and, if it helps, where it is covered, like "ranker, covered in the search doc".
+
 ### An arrow joins two components. A grouping is only where they live.
 
 - **Three strokes, three kinds.** A grouping is long-dashed and soft, with its title above its top-left corner. A component is a solid box with its label inside. Fog is the short dash a call graph already uses for the part of the stack the figure is not drawing. Nothing else distinguishes them, so a reader learns the code once.
