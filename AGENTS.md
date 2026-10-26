@@ -1,6 +1,9 @@
 # engdoc — how to write a doc here
 
-Plain-Markdown plans and eng docs. Docs go in Markdown under `docs/`; use `docs/component-examples` as example usage of how to use the different components such as the ERD diagram, sequence diagram, etc.
+Plain-Markdown plans and eng docs. Docs go in Markdown under `scratch/`; use `component-examples/` as example usage of how to use the different components such as the ERD diagram, sequence diagram, etc.
+
+If you are instructed to modify a doc that does not adhere to these instructions, trust the latest version of these instructions. The instructions may have moved to reflect the latest guidance, and you should assume docs may have been generated on older guidance.
+
 
 ## Prose
 
@@ -9,7 +12,7 @@ Plain-Markdown plans and eng docs. Docs go in Markdown under `docs/`; use `docs/
 - 9th-grade reading level. Plain words, short sentences. No em dashes, no semicolons, no parentheticals.
 - Tables for anything parallel: fields, files, activities, alternatives.
 - Code identifiers in backticks. At most one or two per sentence; describe the rest in words.
-- Say who decided and when: `Matthew, 2026-09-22.` on a decision bullet.
+- Note timestamps when key decisions were made in 24-hour local time such as `2026-09-22 13:45:12 ET: Removed x as a simplification`
 
 ## Structure of a plan
 
